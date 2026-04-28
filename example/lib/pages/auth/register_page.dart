@@ -1,0 +1,601 @@
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
+import '../../models/country_model.dart';
+import '../../theme.dart';
+import '../../utils/country_selection_manager.dart';
+import 'country_selector_page.dart';
+import 'terms_pages.dart';
+
+/// 注册方式枚举
+enum RegisterMethod {
+  phone,  // 手机号注册
+  email,  // 邮箱注册
+}
+
+/// 注册页面
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({Key? key}) : super(key: key);
+
+  @override
+  _RegisterPageState createState() => _RegisterPageState();
+}
+
+class _RegisterPageState extends State<RegisterPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _verificationCodeController = TextEditingController();
+  
+  final CountrySelectionManager _countryManager = CountrySelectionManager();
+  RegisterMethod _registerMethod = RegisterMethod.phone;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _agreeToTerms = false;
+  bool _isLoading = false;
+  int _countdown = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // 监听国家选择变化
+    _countryManager.addListener(_onCountryChanged);
+  }
+
+  @override
+  void dispose() {
+    _countryManager.removeListener(_onCountryChanged);
+    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _verificationCodeController.dispose();
+    super.dispose();
+  }
+
+  /// 国家选择变化回调
+  void _onCountryChanged() {
+    setState(() {
+      // 当国家改变时，重建页面以更新显示
+    });
+  }
+
+  /// 验证邮箱格式
+  bool _isValidEmail(String email) {
+    final emailRegex = RegExp(r'^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$');
+    return emailRegex.hasMatch(email);
+  }
+
+  /// 验证密码强度
+  /// 要求：8-20位，至少包含数字/字母/符号中的两位
+  String? _validatePassword(String? value) {
+    final l10n = AppLocalizations.of(context);
+    
+    if (value == null || value.isEmpty) {
+      return l10n.pleaseEnterPassword;
+    }
+    
+    // 检查长度
+    if (value.length < 8 || value.length > 20) {
+      return l10n.passwordLengthError;
+    }
+    
+    // 检查是否包含数字
+    bool hasDigit = RegExp(r'\d').hasMatch(value);
+    // 检查是否包含字母
+    bool hasLetter = RegExp(r'[a-zA-Z]').hasMatch(value);
+    // 检查是否包含符号
+    bool hasSymbol = RegExp(r"[^\w\s]").hasMatch(value);
+    
+    // 统计包含的字符类型数量
+    int typeCount = 0;
+    if (hasDigit) typeCount++;
+    if (hasLetter) typeCount++;
+    if (hasSymbol) typeCount++;
+    
+    // 至少需要包含两种类型
+    if (typeCount < 2) {
+      return l10n.passwordComplexityError;
+    }
+    
+    return null;
+  }
+
+  /// 发送验证码
+  Future<void> _sendVerificationCode() async {
+    // 验证输入
+    if (_registerMethod == RegisterMethod.phone) {
+      if (_phoneController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).pleaseEnterPhoneNumber),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+    } else {
+      if (_emailController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).pleaseEnterEmail),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+      
+      if (!_isValidEmail(_emailController.text)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).invalidEmail),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() => _isLoading = true);
+    
+    // TODO: 实现发送验证码逻辑
+    await Future.delayed(const Duration(seconds: 1));
+    
+    setState(() {
+      _isLoading = false;
+      _countdown = 60;
+    });
+    
+    // 倒计时
+    Future.doWhile(() async {
+      await Future.delayed(const Duration(seconds: 1));
+      if (_countdown > 0 && mounted) {
+        setState(() => _countdown--);
+        return true;
+      }
+      return false;
+    });
+  }
+
+  /// 注册
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).passwordsDoNotMatch),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+    
+    if (!_agreeToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).mustAgreeToTerms),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    // TODO: 实现实际的注册逻辑
+    await Future.delayed(const Duration(seconds: 2));
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).registerSuccess),
+          backgroundColor: AppTheme.successColor,
+        ),
+      );
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: AppBar(
+        title: Text(l10n.register),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: AppTheme.primaryGradient,
+          ),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppTheme.spacingXLarge),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // 注册方式选择
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.spacingMedium),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                    border: Border.all(color: AppTheme.backgroundColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.selectRecoveryMethod,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: AppTheme.spacingSmall),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildMethodButton(
+                              icon: Icons.phone_android_rounded,
+                              label: l10n.viaPhone,
+                              isSelected: _registerMethod == RegisterMethod.phone,
+                              onTap: () {
+                                setState(() => _registerMethod = RegisterMethod.phone);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: AppTheme.spacingMedium),
+                          Expanded(
+                            child: _buildMethodButton(
+                              icon: Icons.email_rounded,
+                              label: l10n.viaEmail,
+                              isSelected: _registerMethod == RegisterMethod.email,
+                              onTap: () {
+                                setState(() => _registerMethod = RegisterMethod.email);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                const SizedBox(height: AppTheme.spacingLarge),
+                
+                // 手机号输入（当选择手机号注册时显示）
+                if (_registerMethod == RegisterMethod.phone) ...[
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CountrySelectorPage(
+                            selectedCountry: _countryManager.selectedCountry,
+                            onCountrySelected: (country) {
+                              _countryManager.selectCountry(country);
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                    child: Container(
+                      padding: const EdgeInsets.all(AppTheme.spacingMedium),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                        border: Border.all(color: AppTheme.backgroundColor),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(_countryManager.selectedCountry.flag, style: const TextStyle(fontSize: 24)),
+                          const SizedBox(width: AppTheme.spacingSmall),
+                          Expanded(
+                            child: Text(
+                              _countryManager.selectedCountry.getName(l10n.locale.languageCode),
+                              style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+                            ),
+                          ),
+                          Text(
+                            _countryManager.selectedCountry.dialCode,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: AppTheme.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: AppTheme.spacingMedium),
+                  
+                  TextFormField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      labelText: l10n.phoneNumber,
+                      prefixText: '${_countryManager.selectedCountry.dialCode} ',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return l10n.pleaseEnterPhoneNumber;
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+                
+                // 邮箱输入（当选择邮箱注册时显示）
+                if (_registerMethod == RegisterMethod.email) ...[
+                  TextFormField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: l10n.emailAddress,
+                      hintText: l10n.pleaseEnterEmail,
+                      prefixIcon: const Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return l10n.pleaseEnterEmail;
+                      }
+                      if (!_isValidEmail(value)) {
+                        return l10n.invalidEmail;
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+                
+                const SizedBox(height: AppTheme.spacingMedium),
+                
+                // 验证码
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _verificationCodeController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          labelText: l10n.verificationCode,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return l10n.pleaseEnterVerificationCode;
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppTheme.spacingSmall),
+                    SizedBox(
+                      width: 120,
+                      child: ElevatedButton(
+                        onPressed: _countdown > 0 || _isLoading ? null : _sendVerificationCode,
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child: Text(
+                          _countdown > 0 ? '${_countdown}s' : l10n.getCode,
+                          style: const TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: AppTheme.spacingMedium),
+                
+                // 密码
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: l10n.password,
+                    hintText: l10n.passwordStrengthHint,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        color: AppTheme.textHint,
+                      ),
+                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                    helperText: l10n.passwordComplexityError,
+                    helperStyle: const TextStyle(fontSize: 12, color: AppTheme.textHint),
+                  ),
+                  validator: _validatePassword,
+                ),
+                
+                const SizedBox(height: AppTheme.spacingMedium),
+                
+                // 确认密码
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  decoration: InputDecoration(
+                    labelText: l10n.confirmPassword,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        color: AppTheme.textHint,
+                      ),
+                      onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return l10n.pleaseEnterConfirmPassword;
+                    }
+                    return null;
+                  },
+                ),
+                
+                const SizedBox(height: AppTheme.spacingMedium),
+                
+                // 用户协议
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _agreeToTerms,
+                      onChanged: (value) => setState(() => _agreeToTerms = value ?? false),
+                      activeColor: AppTheme.primaryColor,
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _agreeToTerms = !_agreeToTerms),
+                        child: RichText(
+                          text: TextSpan(
+                            style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                            children: [
+                              TextSpan(text: l10n.agreeToTerms),
+                              TextSpan(
+                                text: '《${l10n.userAgreement}》',
+                                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const UserAgreementPage()),
+                                    );
+                                  },
+                              ),
+                              TextSpan(text: l10n.and),
+                              TextSpan(
+                                text: '《${l10n.privacyPolicy}》',
+                                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()),
+                                    );
+                                  },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const SizedBox(height: AppTheme.spacingLarge),
+                
+                // 注册按钮
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _register,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                        )
+                      : Text(l10n.register, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+  
+  /// 构建注册方式按钮
+  Widget _buildMethodButton({
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? AppTheme.primaryColor.withOpacity(0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
+          border: Border.all(
+            color: isSelected 
+                ? AppTheme.primaryColor
+                : AppTheme.backgroundColor,
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              icon,
+              color: isSelected 
+                  ? AppTheme.primaryColor
+                  : AppTheme.textHint,
+              size: 28,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                color: isSelected 
+                    ? AppTheme.primaryColor
+                    : AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
