@@ -1,4 +1,4 @@
-﻿import 'package:flutter/services.dart';
+import 'package:flutter/services.dart';
 import 'ttdoorSensor.dart';
 import 'ttelectricMeter.dart';
 import 'ttremotekey.dart';
@@ -7,6 +7,110 @@ import 'package:ttlock_flutter/ttlock/ttwaterMeter.dart';
 import 'dart:convert' as convert;
 import 'ttgateway.dart';
 
+/// TTLock 智能锁核心管理类
+/// 
+/// 这是 TTLock Flutter 插件的核心类，提供完整的智能锁控制功能。
+/// 通过蓝牙与智能锁通信，支持多种开锁方式管理和高级功能配置。
+/// 
+/// 主要功能模块：
+/// 
+/// 1. **设备发现与初始化**
+///    - 扫描附近的智能锁设备
+///    - 获取蓝牙状态
+///    - 初始化新锁（绑定到用户）
+///    - 重置锁（恢复出厂设置）
+/// 
+/// 2. **基础控制**
+///    - 蓝牙开锁/上锁
+///    - 获取电池电量
+///    - 获取锁状态
+///    - 获取操作记录
+///    - 设置/获取锁时间
+/// 
+/// 3. **密码管理**
+///    - 创建自定义密码（4-9位）
+///    - 修改密码及有效期
+///    - 删除密码
+///    - 重置所有密码
+///    - 获取所有有效密码
+///    - 修改管理员密码
+///    - 获取管理员密码
+/// 
+/// 4. **IC卡管理**
+///    - 添加IC卡（刷卡录入）
+///    - 修改卡片有效期
+///    - 删除指定卡片
+///    - 清除所有卡片
+///    - 获取所有有效卡片
+///    - 恢复卡片数据
+///    - 挂失卡片
+/// 
+/// 5. **指纹管理**
+///    - 添加指纹（多次按压录入）
+///    - 修改指纹有效期
+///    - 删除指定指纹
+///    - 清除所有指纹
+///    - 获取所有有效指纹
+/// 
+/// 6. **人脸识别管理**
+///    - 添加人脸（多次扫描录入）
+///    - 修改人脸有效期
+///    - 删除指定人脸
+///    - 清除所有人脸
+/// 
+/// 7. **高级功能**
+///    - 自动落锁时间设置
+///    - 远程解锁开关
+///    - 声音开关和音量调节
+///    - 通行模式设置（常开模式）
+///    - 电梯楼层控制
+///    - 节能模式设置
+///    - 酒店卡扇区设置
+///    - NB-IoT 服务器配置
+///    - WiFi 配置和管理
+///    - 门锁方向设置
+///    - 获取系统信息
+/// 
+/// 8. **配件管理**
+///    - 远程钥匙（遥控器）管理
+///    - 门磁传感器管理
+///    - 蓝牙键盘管理
+/// 
+/// 使用示例：
+/// ```dart
+/// // 扫描智能锁
+/// TTLock.startScanLock((scanModel) {
+///   print('发现设备: ${scanModel.name}');
+/// });
+/// 
+/// // 初始化锁
+/// TTLock.initLock({
+///   'lockMac': 'AA:BB:CC:DD:EE:FF',
+///   'lockVersion': '3.0',
+///   'isInited': false,
+/// }, (lockData) {
+///   print('初始化成功: $lockData');
+/// }, (errorCode, errorMsg) {
+///   print('初始化失败: $errorMsg');
+/// });
+/// 
+/// // 蓝牙开锁
+/// TTLock.controlLock(lockData, TTControlAction.unlock, 
+///   (lockTime, electricQuantity, uniqueId, newLockData) {
+///     print('开锁成功，电量: $electricQuantity%');
+///   }, 
+///   (errorCode, errorMsg) {
+///     print('开锁失败: $errorMsg');
+///   }
+/// );
+/// ```
+/// 
+/// 注意事项：
+/// - 所有操作都需要通过蓝牙连接锁设备
+/// - lockData 是加密的控制数据，包含用户权限和有效期
+/// - 部分功能需要特定型号的锁支持
+/// - 操作前建议检查功能支持情况
+/// - 退出页面前如需重新初始化，必须先重置锁
 class TTLock {
   static bool isOnPremise = false;
 
@@ -156,33 +260,33 @@ class TTLock {
 
   static bool printLog = false;
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
-   * Scan the smart lock being broadcast
+   * 扫描正在广播的智能锁
    */
   static void startScanLock(TTLockScanCallback scanCallback) {
     invoke(COMMAND_START_SCAN_LOCK, null, scanCallback);
   }
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
-   * Stop scan the smart lock being broadcast
+   * 停止扫描正在广播的智能锁
    */
   static void stopScanLock() {
     invoke(COMMAND_STOP_SCAN_LOCK, null, null);
   }
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
-   * Current Phone/Pad Bluetooth state
+   * 当前手机/平板的蓝牙状态
    */
   static void getBluetoothState(TTBluetoothStateCallback stateCallback) {
     invoke(COMMAND_GET_BLUETOOTH_STATE, null, stateCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Initialize the lock
+ * 初始化智能锁
  * map {"lockMac": string, "lockVersion": string, "isInited": bool}
  */
   static void initLock(
@@ -190,9 +294,9 @@ class TTLock {
     invoke(COMMAND_INIT_LOCK, map, callback, fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Reset the lock
+ * 重置智能锁
  */
   static void resetLock(String lockData, TTSuccessCallback callback,
       TTFailedCallback failedCallback) {
@@ -200,9 +304,9 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Reset all eKeys
+ * 重置所有电子钥匙
  */
   static void resetEkey(String lockData, TTLockDataCallback callback,
       TTFailedCallback failedCallback) {
@@ -210,9 +314,9 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
- * Function support
+ * 功能支持检查
  */
   static void supportFunction(TTLockFunction fuction, String lockData,
       TTFunctionSupportCallback callback) {
@@ -222,9 +326,9 @@ class TTLock {
     invoke(COMMAND_FUNCTION_SUPPORT, map, callback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Lock or unlock the lock
+ * 锁定或解锁智能锁
  */
   static void controlLock(String lockData, TTControlAction controlAction,
       TTControlLockCallback callback, TTFailedCallback failedCallback) {
@@ -234,16 +338,16 @@ class TTLock {
     invoke(COMMAND_CONTROL_LOCK, map, callback, fail_callback: failedCallback);
   }
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
-   * Create custom passcode
+   * 创建自定义密码
    * 
-   * passcode The passcode is limited to 4 - 9 digits
-   * startDate The time（millisecond） when it becomes valid
-   * endDate The time（millisecond） when it is expired
-   * lockData The lock data string used to operate lock
-   * callback A callback invoked when passcode is created
-   * failedCallback A callback invoked when the operation fails
+   * passcode 密码限制为4-9位数字
+   * startDate 生效时间（毫秒）
+   * endDate 过期时间（毫秒）
+   * lockData 用于操作锁的锁数据字符串
+   * callback 密码创建成功时的回调
+   * failedCallback 操作失败时的回调
    */
   static void createCustomPasscode(
       String passcode,
@@ -261,14 +365,14 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Moddify passcode or passcode valid date
+ * 修改密码或密码有效期
  * 
- * passcodeOrigin The passcode need to be modified
- * passcodeNew The new passcode is used to replace passcodeOrigin. If you just want to modify valid date, the passcodeNew should be null. The passcodeNew is limited to 4 - 9 digits
- * startDate The time（millisecond） when it becomes valid
- * endDate The time（millisecond） when it is expired
+ * passcodeOrigin 需要修改的原始密码
+ * passcodeNew 用于替换原始密码的新密码。如果只想修改有效期，passcodeNew应为null。新密码限制为4-9位数字
+ * startDate 生效时间（毫秒）
+ * endDate 过期时间（毫秒）
  */
   static void modifyPasscode(
       String passcodeOrigin,
@@ -288,12 +392,12 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Delete passcode
+ * 删除密码
  * 
- * passcode The passcode you want to delete it. 
- * lockData The lock data string used to operate lock
+ * passcode 要删除的密码
+ * lockData 用于操作锁的锁数据字符串
  */
   static void deletePasscode(String passcode, String lockData,
       TTSuccessCallback callback, TTFailedCallback failedCallback) {
@@ -304,9 +408,9 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * All passcodes will be invalid except admin passcode
+ * 除管理员密码外，所有密码将失效
  */
   static void resetPasscode(String lockData, TTLockDataCallback callback,
       TTFailedCallback failedCallback) {
@@ -314,11 +418,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
- * Get admin passcode from lock 
+ * 从锁中获取管理员密码
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getAdminPasscode(String lockData,
       TTGetAdminPasscodeCallback callback, TTFailedCallback failedCallback) {
@@ -363,11 +467,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
- * Get the lock switch state
+ * 获取锁的开关状态
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getLockSwitchState(String lockData,
       TTGetLockStatusCallback callback, TTFailedCallback failedCallback) {
@@ -375,14 +479,14 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
-   * Add a card
+   * 添加IC卡
    * 
-   * cycleList Optional. Used to set cyclic card. Usually set to null
-   * startDate The time（millisecond） when it becomes valid
-   * endDate The time（millisecond） when it is expired
-   * lockData The lock data string used to operate lock
+   * cycleList 可选。用于设置循环卡片。通常设置为null
+   * startDate 生效时间（毫秒）
+   * endDate 过期时间（毫秒）
+   * lockData 用于操作锁的锁数据字符串
    */
   static void addCard(
       List<TTCycleModel>? cycleList,
@@ -403,15 +507,15 @@ class TTLock {
         progress_callback: progressCallback, fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Modify the card valid date
+ * 修改卡片有效期
  * 
- * cardNumber The card number you want to modify
- * cycleList Optional. Used to set cyclic card. Usually set to null
- * startDate The time（millisecond） when it becomes valid
- * endDate The time（millisecond） when it is expired
- * lockData The lock data string used to operate lock
+ * cardNumber 要修改的卡片编号
+ * cycleList 可选。用于设置循环卡片。通常设置为null
+ * startDate 生效时间（毫秒）
+ * endDate 过期时间（毫秒）
+ * lockData 用于操作锁的锁数据字符串
  */
   static void modifyCardValidityPeriod(
       String cardNumber,
@@ -432,12 +536,12 @@ class TTLock {
     invoke(COMMAND_MODIFY_CARD, map, callback, fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Delete the card
+ * 删除卡片
  * 
- * cardNumber The card number you want to delete
- * lockData The lock data string used to operate lock
+ * cardNumber 要删除的卡片编号
+ * lockData 用于操作锁的锁数据字符串
  */
   static void deleteCard(String cardNumber, String lockData,
       TTSuccessCallback callback, TTFailedCallback failedCallback) {
@@ -447,11 +551,11 @@ class TTLock {
     invoke(COMMAND_DELETE_CARD, map, callback, fail_callback: failedCallback);
   }
 
-  // ignore: slash_for_doc_comments
+  // 忽略：文档注释斜杠格式
 /**
- * Get all valid cards
+ * 获取所有有效卡片
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getAllValidCards(String lockData, TTGetAllCardsCallback callback,
       TTFailedCallback failedCallback) {
@@ -459,11 +563,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Clear all cards
+ * 清除所有卡片
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void clearAllCards(String lockData, TTSuccessCallback callback,
       TTFailedCallback failedCallback) {
@@ -495,14 +599,14 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
-   * Add a fingerprint
+   * 添加指纹
    * 
-   * cycleList Optional. Used to set cyclic fingerprint. Usually set to null
-   * startDate The time（millisecond） when it becomes valid
-   * endDate The time（millisecond） when it is expired
-   * lockData The lock data string used to operate lock
+   * cycleList 可选。用于设置循环指纹。通常设置为null
+   * startDate 生效时间（毫秒）
+   * endDate 过期时间（毫秒）
+   * lockData 用于操作锁的锁数据字符串
    */
   static void addFingerprint(
       List<TTCycleModel>? cycleList,
@@ -523,15 +627,15 @@ class TTLock {
         progress_callback: progressCallback, fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Modify the fingerprint valid date
+ * 修改指纹有效期
  * 
- * cardNumber The fingerprint number you want to modify
- * cycleList Optional. Used to set cyclic card. Usually set to null
- * startDate The time（millisecond） when it becomes valid
- * endDate The time（millisecond） when it is expired
- * lockData The lock data string used to operate lock
+ * fingerprintNumber 要修改的指纹编号
+ * cycleList 可选。用于设置循环卡片。通常设置为null
+ * startDate 生效时间（毫秒）
+ * endDate 过期时间（毫秒）
+ * lockData 用于操作锁的锁数据字符串
  */
   static void modifyFingerprintValidityPeriod(
       String fingerprintNumber,
@@ -553,12 +657,12 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Delete the fingerprint
+ * 删除指纹
  * 
- * cardNumber The fingerprint number you want to delete
- * lockData The lock data string used to operate lock
+ * fingerprintNumber 要删除的指纹编号
+ * lockData 用于操作锁的锁数据字符串
  */
   static void deleteFingerprint(String fingerprintNumber, String lockData,
       TTSuccessCallback callback, TTFailedCallback failedCallback) {
@@ -569,11 +673,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Clear all fingerprints
+ * 清除所有指纹
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void clearAllFingerprints(String lockData, TTSuccessCallback callback,
       TTFailedCallback failedCallback) {
@@ -581,11 +685,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Get all valid fingerprints
+ * 获取所有有效指纹
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getAllValidFingerprints(String lockData,
       TTGetAllFingerprintsCallback callback, TTFailedCallback failedCallback) {
@@ -599,12 +703,12 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Modify admin passcode
+ * 修改管理员密码
  * 
- * adminPasscode The new admin passcode is limited to 4 - 9 digits
- * lockData The lock data string used to operate lock
+ * adminPasscode 新管理员密码，限制为4-9位数字
+ * lockData 用于操作锁的锁数据字符串
  */
   static void modifyAdminPasscode(String adminPasscode, String lockData,
       TTSuccessCallback callback, TTFailedCallback failedCallback) {
@@ -615,12 +719,12 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Set the lock time
+ * 设置锁时间
  * 
- * timestamp A timestamp（millisecond）
- * lockData The lock data string used to operate lock
+ * timestamp 时间戳（毫秒）
+ * lockData 用于操作锁的锁数据字符串
  */
   static void setLockTime(int timestamp, String lockData,
       TTSuccessCallback callback, TTFailedCallback failedCallback) {
@@ -630,11 +734,11 @@ class TTLock {
     invoke(COMMAND_SET_LOCK_TIME, map, callback, fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Get the lock time
+ * 获取锁时间
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getLockTime(String lockData, TTGetLockTimeCallback callback,
       TTFailedCallback failedCallback) {
@@ -642,14 +746,14 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Get the lock operate record
+ * 获取锁操作记录
  * 
  * type 
- *      latest - Where the record was last read
- *      total - All of records in lock
- * lockData The lock data string used to operate lock
+ *      latest - 从上次读取记录的位置开始
+ *      total - 锁中的所有记录
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getLockOperateRecord(
       TTOperateRecordType type,
@@ -663,11 +767,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Get the lock power
+ * 获取锁电量
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getLockPower(
       String lockData,
@@ -689,11 +793,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Get the lock automatic locking periodic time
+ * 获取锁自动落锁周期时间
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getLockAutomaticLockingPeriodicTime(
       String lockData,
@@ -703,12 +807,12 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Set the lock automatic locking periodic time
+ * 设置锁自动落锁周期时间
  * 
- * time (sec)
- * lockData The lock data string used to operate lock
+ * time (秒)
+ * lockData 用于操作锁的锁数据字符串
  */
   static void setLockAutomaticLockingPeriodicTime(int time, String lockData,
       TTSuccessCallback callback, TTFailedCallback failedCallback) {
@@ -719,11 +823,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Set the lock remote unlock switch
+ * 获取锁远程解锁开关状态
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void getLockRemoteUnlockSwitchState(String lockData,
       TTGetSwitchStateCallback callback, TTFailedCallback failedCallback) {
@@ -731,11 +835,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Get the lock remote unlock switch state
+ * 设置锁远程解锁开关状态
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void setLockRemoteUnlockSwitchState(bool isOn, String lockData,
       TTLockDataCallback callback, TTFailedCallback failedCallback) {
@@ -789,16 +893,16 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Config the lock passage mode. If config succeed,the lock will always be unlocked
+ * 配置锁通行模式。如果配置成功，锁将始终保持解锁状态
  * 
  * type 
- * weekly Any number 1-7, 1 means Monday，2 means  Tuesday ,...,7 means Sunday, such as [1,3,6,7]. If type == TTPassageModeTypeMonthly, the weekly should be set null
- * monthly Any number from 1 to 31, such as @[@1,@13,@26,@31]. If type == TTPassageModeTypeWeekly, the monthly should be set null
- * startTime  The time when it becomes valid (minutes from 0 clock)
- * endTime The time when it is expired (minutes from 0 clock)
- * lockData The lock data string used to operate lock
+ * weekly 任意数字1-7，1表示周一，2表示周二，...，7表示周日，例如 [1,3,6,7]。如果 type == TTPassageModeTypeMonthly，weekly应设置为null
+ * monthly 任意数字1到31，例如 @[@1,@13,@26,@31]。如果 type == TTPassageModeTypeWeekly，monthly应设置为null
+ * startTime  生效时间（从0点开始的分钟数）
+ * endTime 过期时间（从0点开始的分钟数）
+ * lockData 用于操作锁的锁数据字符串
  */
   static void addPassageMode(
       TTPassageModeType type,
@@ -823,11 +927,11 @@ class TTLock {
         fail_callback: failedCallback);
   }
 
-// ignore: slash_for_doc_comments
+// 忽略：文档注释斜杠格式
 /**
- * Clear all passage modes
+ * 清除所有通行模式
  * 
- * lockData The lock data string used to operate lock
+ * lockData 用于操作锁的锁数据字符串
  */
   static void clearAllPassageModes(String lockData, TTSuccessCallback callback,
       TTFailedCallback failedCallback) {
@@ -1933,11 +2037,11 @@ class TTLockScanModel {
 }
 
 class TTCycleModel {
-  // weekDay  1-7,1 means Monday，2 means  Tuesday ,...,7 means Sunday
+  // weekDay  1-7，1表示周一，2表示周二，...，7表示周日
   int weekDay = 0;
-  // startTime The time when it becomes valid (minutes from 0 clock)
+  // startTime 生效时间（从0点开始的分钟数）
   int startTime = 0;
-  // endTime  The time when it is expired (minutes from 0 clock)
+  // endTime  过期时间（从0点开始的分钟数）
   int endTime = 0;
 
   /// jsonDecode(jsonStr) 方法中会调用实体类的这个方法。如果实体类中没有这个方法，会报错。
@@ -1949,9 +2053,9 @@ class TTCycleModel {
     return map;
   }
 
-// weekDay  1-7,1 means Monday，2 means  Tuesday ,...,7 means Sunday
-//startTime The time when it becomes valid (minutes from 0 clock)
-//endTime  The time when it is expired (minutes from 0 clock)
+// weekDay  1-7，1表示周一，2表示周二，...，7表示周日
+//startTime 生效时间（从0点开始的分钟数）
+//endTime  过期时间（从0点开始的分钟数）
   TTCycleModel(int weekDay, int startTime, int endTime) {
     this.weekDay = weekDay;
     this.startTime = startTime;

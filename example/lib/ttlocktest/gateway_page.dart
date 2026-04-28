@@ -1,10 +1,32 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:bmprogresshud/progresshud.dart';
 import 'package:ttlock_flutter/ttlock/ttgateway.dart';
 import 'package:ttlock_flutter/ttlock/ttlock.dart';
 
-import 'config.dart';
+import '../config.dart';
 
+/// TTLock 网关配置页面
+/// 
+/// 该页面用于初始化和配置 TTLock 网关设备，支持多种网关类型：
+/// - G2 网关：需要配置 WiFi 名称和密码
+/// - G3 网关：无需 WiFi 配置（内置4G）
+/// - G4 网关：无需 WiFi 配置（内置4G）
+/// 
+/// 主要功能：
+/// - 初始化网关设备并绑定到 TTLock 账户
+/// - 配置网关的 WiFi 连接（仅 G2）
+/// - 设置网关名称和用户信息
+/// 
+/// 使用场景：
+/// 1. 在扫描页面发现网关后，点击进入此页面进行初始化
+/// 2. 为 G2 网关配置 WiFi 网络连接
+/// 3. 将网关绑定到用户的 TTLock 账户
+/// 
+/// 配置要求：
+/// - 需要在 config.dart 中配置 GatewayConfig
+/// - ttlockUid：用户 ID
+/// - ttlockLoginPassword：登录密码
+/// - gatewayName：网关名称
 class GatewayPage extends StatefulWidget {
   GatewayPage({required this.type, this.wifi}) : super();
   final String? wifi;

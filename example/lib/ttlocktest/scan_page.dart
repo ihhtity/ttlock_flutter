@@ -1,18 +1,18 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:ttlock_flutter/ttlock/ttelectricMeter.dart';
 import 'package:ttlock_flutter/ttlock/ttgateway.dart';
 import 'package:ttlock_flutter/ttlock/ttlock.dart';
 import 'package:ttlock_flutter/ttlock/ttremoteKeypad.dart';
 import 'package:ttlock_flutter/ttlock/ttwaterMeter.dart';
-import 'package:ttlock_flutter_example/gateway_page.dart';
-import 'package:ttlock_flutter_example/water_meter_page.dart';
-import 'config.dart';
+import '../config.dart';
 import 'key_pad_page.dart';
 import 'wifi_page.dart';
 import 'package:bmprogresshud/progresshud.dart';
 import 'lock_page.dart';
 import 'electric_meter_page.dart';
-import 'theme.dart';
+import 'gateway_page.dart';
+import 'water_meter_page.dart';
+import '../theme.dart';
 
 
 enum ScanType { lock, gateway, electricMeter, keyPad, waterMeter }

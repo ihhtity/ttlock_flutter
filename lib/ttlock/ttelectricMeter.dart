@@ -1,8 +1,24 @@
-﻿// import 'ttlock.dart';
+// import 'ttlock.dart';
 import 'dart:convert' as convert;
 
 import 'ttlock.dart';
 
+/// TTLock 智能电表管理类
+/// 
+/// 提供智能电表的扫描、连接、初始化和控制功能。
+/// 智能电表用于远程监控和控制电力使用，支持预付费和后付费模式。
+/// 
+/// 主要功能：
+/// - 配置服务器参数
+/// - 扫描附近的电表设备
+/// - 连接和断开电表
+/// - 初始化电表（设置价格、付费模式等）
+/// - 控制电源开关（通电/断电）
+/// - 设置和查询剩余电量
+/// - 充值操作
+/// - 读取电表数据（电压、电流、功率等）
+/// - 设置最大负载功率
+/// - 删除电表配置
 class TTElectricMeter {
   static const String COMMAND_CONFIG_SERVER_ELECTRIC_METER =
       "electricMeterConfigServer";
@@ -210,19 +226,28 @@ class TTElectricMeter {
   // }
 }
 
+/// 电表服务器配置参数类
+/// 
+/// 用于配置电表服务的连接参数，包括服务器地址、客户端ID和访问令牌。
 class ElectricMeterServerParamMode {
-  late String url;
-  late String clientId;
-  late String accessToken;
+  late String url;          // 服务器 URL
+  late String clientId;     // 客户端 ID
+  late String accessToken;  // 访问令牌
 }
 
+/// 电表初始化参数模型类
+/// 
+/// 包含初始化电表所需的参数，如 MAC 地址、名称、价格和付费模式。
 class ElectricMeterInitParamModel {
-  late String mac;
-  late String name;
-  late String price;
-  late TTMeterPayMode payMode;
+  late String mac;              // 电表 MAC 地址
+  late String name;             // 电表名称/编号
+  late String price;            // 电价（元/度）
+  late TTMeterPayMode payMode;  // 付费模式（预付费/后付费）
 }
 
+/// TTLock 电表扫描结果模型类
+/// 
+/// 表示扫描到的电表设备信息，包含设备状态和读数数据。
 class TTElectricMeterScanModel {
   String name = '';
   String mac = '';

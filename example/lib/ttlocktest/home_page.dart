@@ -1,12 +1,38 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:bmprogresshud/progresshud.dart';
 import 'package:ttlock_flutter/ttlock/ttelectricMeter.dart';
 import 'package:ttlock_flutter/ttlock/ttwaterMeter.dart';
 import 'scan_page.dart';
-import 'config.dart';
-import 'theme.dart';
-import 'l10n/app_localizations.dart';
+import '../config.dart';
+import '../theme.dart';
+import '../l10n/app_localizations.dart';
 
+/// TTLock 设备管理主页
+/// 
+/// 这是 TTLock 测试应用的主页面，提供所有设备类型的入口：
+/// - 智能门锁：扫描和初始化蓝牙锁
+/// - 网关：扫描和配置 WiFi/4G 网关
+/// - 智能电表：扫描和管理电表设备
+/// - 智能水表：扫描和管理水表设备
+/// - 多功能键盘：扫描和配置蓝牙键盘配件
+/// 
+/// 主要功能：
+/// - 展示欢迎界面和应用标题
+/// - 提供语言切换功能（中文/英文）
+/// - 以卡片网格形式展示各类设备入口
+/// - 点击设备卡片进入对应的扫描页面
+/// 
+/// 使用流程：
+/// 1. 启动应用后进入此主页
+/// 2. 选择要管理的设备类型
+/// 3. 点击进入扫描页面搜索附近的设备
+/// 4. 选择设备并进行初始化配置
+/// 
+/// UI 特点：
+/// - 渐变色 AppBar 和欢迎卡片
+/// - 2列网格布局展示设备卡片
+/// - 每个卡片包含图标、标题和副标题
+/// - 支持国际化多语言显示
 class HomePage extends StatefulWidget {
   HomePage() : super();
   @override

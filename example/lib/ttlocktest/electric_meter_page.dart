@@ -1,8 +1,29 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:ttlock_flutter/ttlock/ttelectricMeter.dart';
 import 'package:bmprogresshud/progresshud.dart';
 import 'package:ttlock_flutter/ttlock/ttlock.dart';
 
+/// TTLock 智能电表测试页面
+/// 
+/// 该页面用于测试和管理 TTLock 智能电表设备，提供以下功能：
+/// - 重置电表（删除设备配置）
+/// - 读取电表数据（电量、功率等）
+/// - 控制电表开关（通电/断电）
+/// - 设置剩余电量（充值功能）
+/// - 清除剩余电量
+/// - 设置最大功率限制
+/// - 设置付费模式（预付费/后付费）
+/// - 充值操作
+/// - 读取电表特性值
+/// 
+/// 使用场景：
+/// 1. 在扫描页面发现电表后，点击进入此页面进行初始化
+/// 2. 对已初始化的电表进行各种功能测试
+/// 3. 管理电表的配置和状态
+/// 
+/// 注意事项：
+/// - 退出页面前必须重置电表，否则无法再次初始化
+/// - 所有操作都需要通过蓝牙连接电表设备
 class ElectricMeterPage extends StatefulWidget {
   ElectricMeterPage({Key? key, required this.name, required this.mac})
       : super(key: key);

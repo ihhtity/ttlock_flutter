@@ -1,8 +1,21 @@
-﻿import 'package:bmprogresshud/progresshud.dart';
+import 'package:bmprogresshud/progresshud.dart';
 import 'package:flutter/material.dart';
 import 'package:ttlock_flutter/ttlock/ttlock.dart';
 import 'package:ttlock_flutter/ttlock/ttwaterMeter.dart';
 
+/// TTLock 智能水表测试页面
+/// 
+/// 该页面用于测试和管理 TTLock 智能水表设备，提供以下功能：
+/// - 重置水表（删除设备配置）
+/// 
+/// 使用场景：
+/// 1. 在扫描页面发现水表后，点击进入此页面进行初始化
+/// 2. 对已初始化的水表进行功能测试
+/// 3. 管理水表的配置和状态
+/// 
+/// 注意事项：
+/// - 退出页面前必须重置水表，否则无法再次初始化
+/// - 所有操作都需要通过蓝牙连接水表设备
 enum Command {
   reset
 }

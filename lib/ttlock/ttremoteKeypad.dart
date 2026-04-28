@@ -1,7 +1,19 @@
-﻿import 'dart:convert' as convert;
+import 'dart:convert' as convert;
 
 import 'ttlock.dart';
 
+/// TTLock 远程键盘（蓝牙键盘）管理类
+/// 
+/// 提供蓝牙键盘的扫描、初始化和多功能管理功能。
+/// 蓝牙键盘可以作为智能锁的输入设备，支持密码输入、指纹录入、卡片管理等功能。
+/// 
+/// 主要功能：
+/// - 扫描附近的蓝牙键盘
+/// - 初始化普通蓝牙键盘
+/// - 初始化多功能蓝牙键盘（支持指纹、卡片等）
+/// - 管理已存储的锁信息
+/// - 通过键盘添加指纹
+/// - 通过键盘添加IC卡
 class TTRemoteKeypad {
   static const String COMMAND_START_SCAN_REMOTE_KEYPAD =
       "remoteKeypadStartScan";

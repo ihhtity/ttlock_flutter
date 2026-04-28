@@ -1,6 +1,19 @@
-﻿import 'ttlock.dart';
+import 'ttlock.dart';
 import 'dart:convert' as convert;
 
+/// TTLock 网关管理类
+/// 
+/// 提供 WiFi/4G 网关的扫描、连接、初始化和配置功能。
+/// 网关用于将蓝牙锁连接到互联网，实现远程控制和管理。
+/// 
+/// 主要功能：
+/// - 扫描附近的网关设备
+/// - 连接和断开网关
+/// - 初始化网关（配置 WiFi 或 4G）
+/// - 获取周围 WiFi 列表
+/// - 配置 IP 地址（静态/动态）
+/// - 配置 APN（4G 网络）
+/// - 固件升级
 class TTGateway {
   static const String COMMAND_START_SCAN_GATEWAY = "startScanGateway";
   static const String COMMAND_STOP_SCAN_GATEWAY = "stopScanGateway";
@@ -50,12 +63,12 @@ class TTGateway {
   }
 
   ///[map] {"type":x, "ipAddress": "xxx", "subnetMask": xxx"", "router": "xxx", "preferredDns": "xxx", "alternateDns": "xxx"}
-  //type  0 means manual, 1 means automatic
-  //  ipAddress (option)  such as 0.0.0.0
-  //  subnetMask (option)  such as 255.255.0.0
-  //  router (option)  such as 0.0.0.0
-  //  preferredDns (option)  such as 0.0.0.0
-  //  alternateDns (option)  such as 0.0.0.0
+  //type  0表示手动，1表示自动
+  //  ipAddress (可选)  例如 0.0.0.0
+  //  subnetMask (可选)  例如 255.255.0.0
+  //  router (可选)  例如 0.0.0.0
+  //  preferredDns (可选)  例如 0.0.0.0
+  //  alternateDns (可选)  例如 0.0.0.0
   static void configIp(
     Map map,
     TTSuccessCallback callback,

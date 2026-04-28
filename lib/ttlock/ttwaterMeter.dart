@@ -1,6 +1,22 @@
-﻿import 'ttlock.dart';
+import 'ttlock.dart';
 import 'dart:convert' as convert;
 
+/// TTLock 智能水表管理类
+/// 
+/// 提供智能水表的扫描、连接、初始化和控制功能。
+/// 智能水表用于远程监控和控制水资源使用，支持预付费和后付费模式。
+/// 
+/// 主要功能：
+/// - 配置服务器参数
+/// - 扫描附近的水表设备
+/// - 连接和断开水表
+/// - 初始化水表（设置价格、付费模式等）
+/// - 控制水阀开关（通水/断水）
+/// - 设置和查询剩余水量
+/// - 充值操作
+/// - 读取水表数据（总用量、剩余量等）
+/// - 设置总用水量
+/// - 删除水表配置
 class TTWaterMeter {
   static const String COMMAND_CONFIG_SERVER_WATER_METER =
       "waterMeterConfigServer";
@@ -200,19 +216,28 @@ class TTWaterMeter {
   // }
 }
 
+/// 水表服务器配置参数类
+/// 
+/// 用于配置水表服务的连接参数，包括服务器地址、客户端ID和访问令牌。
 class WaterMeterServerParamMode {
-  late String url;
-  late String clientId;
-  late String accessToken;
+  late String url;          // 服务器 URL
+  late String clientId;     // 客户端 ID
+  late String accessToken;  // 访问令牌
 }
 
+/// 水表初始化参数模型类
+/// 
+/// 包含初始化水表所需的参数，如 MAC 地址、名称、价格和付费模式。
 class WaterMeterInitParamModel {
-  late String mac;
-  late String name;
-  late String price;
-  late TTMeterPayMode payMode;
+  late String mac;              // 水表 MAC 地址
+  late String name;             // 水表名称/编号
+  late String price;            // 水价（元/吨）
+  late TTMeterPayMode payMode;  // 付费模式（预付费/后付费）
 }
 
+/// TTLock 水表扫描结果模型类
+/// 
+/// 表示扫描到的水表设备信息，包含设备状态和读数数据。
 class TTWaterMeterScanModel {
   String name = '';
   String mac = '';

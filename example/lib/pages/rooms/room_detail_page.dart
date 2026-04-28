@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:ttlock_flutter/ttlock/ttlock.dart';
+import 'package:bmprogresshud/progresshud.dart';
 import '../../theme.dart';
+import '../../utils/ttlock_api_service.dart';
 
 /// 房间详情/编辑页面
+///
+/// 显示房间详细信息并提供智能锁控制功能：
+/// - 查看房间基本信息（名称、类型、楼栋、楼层等）
+/// - 智能锁控制（蓝牙开锁、密码管理、卡片管理等）
+/// - 电源设备控制（通电、断电等）
+/// - 房间设置和设备绑定
 class RoomDetailPage extends StatefulWidget {
   final Map<String, dynamic> room;
 
@@ -12,24 +21,684 @@ class RoomDetailPage extends StatefulWidget {
 }
 
 class _RoomDetailPageState extends State<RoomDetailPage> {
+  BuildContext? _context;
+  String? _lockData; // 智能锁数据
+  String? _lockMac; // 智能锁 MAC 地址
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 从房间信息中获取锁数据（如果有）
+    _lockData = widget.room['lockData'];
+    _lockMac = widget.room['lockMac'];
+
+    // 如果没有锁数据，尝试加载测试数据
+    if (_lockData == null || _lockData!.isEmpty) {
+      _loadTestLockData();
+    }
+  }
+
+  /// 加载测试锁数据（用于演示）
+  /// 注意：实际使用时应从 TTLock API 获取真实数据
+  void _loadTestLockData() {
+    // TODO: 这里应该调用 TTLock API 获取真实的锁数据
+    // API 文档: https://open.ttlock.com/doc/api/v3/key/list
+    //
+    // 示例 API 调用流程：
+    // 1. 登录获取 access_token
+    //    POST https://api.ttlock.com/v3/oauth2/token
+    //    参数: clientId, clientSecret, username, password
+    //
+    // 2. 获取钥匙列表
+    //    GET https://api.ttlock.com/v3/key/list
+    //    参数: access_token, page, pageSize
+    //
+    // 3. 解析返回的 lockData 和 lockMac
+
+    print('提示: 当前为测试模式，请使用真实的 lockData');
+    print('如需从服务器获取数据，请集成 TTLock Open API');
+
+    // 显示提示对话框
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showLoadDeviceDialog();
+    });
+  }
+
+  /// 显示加载设备对话框
+  void _showLoadDeviceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('加载智能锁设备'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '请选择加载方式：',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.cloud_download_rounded,
+                  color: AppTheme.primaryColor),
+              title: const Text('从 API 加载'),
+              subtitle: const Text('使用账号 19830357494 登录'),
+              onTap: () {
+                Navigator.pop(context);
+                _loadDeviceFromAPI();
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.edit_rounded, color: AppTheme.primaryColor),
+              title: const Text('手动输入'),
+              subtitle: const Text('直接输入 lockData'),
+              onTap: () {
+                Navigator.pop(context);
+                _showManualInputDialog();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bluetooth_searching_rounded,
+                  color: AppTheme.primaryColor),
+              title: const Text('蓝牙扫描'),
+              subtitle: const Text('扫描附近的智能锁'),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('请使用主页的扫描功能')),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 从 API 加载设备
+  Future<void> _loadDeviceFromAPI() async {
+    _showLoading('正在登录...');
+
+    try {
+      final device = await TTLockApiService.loadFirstDevice(
+        TestAccount.username,
+        TestAccount.password,
+      );
+
+      if (device == null) {
+        _showError(TTLockError.fail, '加载失败，请检查配置');
+        return;
+      }
+
+      setState(() {
+        _lockData = device['lockData'];
+        _lockMac = device['lockMac'];
+      });
+
+      _showSuccess('设备加载成功\n${device['lockName']}');
+    } catch (e) {
+      _showError(TTLockError.fail, '加载异常: $e');
+    }
+  }
+
+  /// 显示手动输入对话框
+  void _showManualInputDialog() {
+    final lockDataController = TextEditingController();
+    final lockMacController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('手动输入设备信息'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: lockDataController,
+              decoration: const InputDecoration(
+                labelText: 'Lock Data',
+                hintText: '请输入完整的 lockData',
+              ),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: lockMacController,
+              decoration: const InputDecoration(
+                labelText: 'MAC 地址',
+                hintText: '例如: AA:BB:CC:DD:EE:FF',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final lockData = lockDataController.text.trim();
+              final lockMac = lockMacController.text.trim();
+
+              if (lockData.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('请输入 lockData')),
+                );
+                return;
+              }
+
+              Navigator.pop(context);
+
+              setState(() {
+                _lockData = lockData;
+                _lockMac = lockMac.isEmpty ? null : lockMac;
+              });
+
+              _showSuccess('设备信息已设置');
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示加载提示
+  void _showLoading(String text) {
+    if (_context != null) {
+      ProgressHud.of(_context!)!.showLoading(text: text);
+    }
+  }
+
+  /// 显示成功提示
+  void _showSuccess(String text) {
+    if (_context != null) {
+      ProgressHud.of(_context!)!.showSuccessAndDismiss(text: text);
+    }
+  }
+
+  /// 显示错误提示
+  void _showError(TTLockError errorCode, String errorMsg) {
+    if (_context != null) {
+      ProgressHud.of(_context!)!.showErrorAndDismiss(
+        text: '错误代码: $errorCode\n错误信息: $errorMsg',
+      );
+    }
+  }
+
+  /// 检查锁数据是否有效
+  bool _checkLockData() {
+    if (_lockData == null || _lockData!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('未绑定智能锁，请先在设备绑定中添加智能锁'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return false;
+    }
+    return true;
+  }
+
+  /// 蓝牙开锁
+  Future<void> _unlock() async {
+    if (!_checkLockData()) return;
+
+    _showLoading('正在开锁...');
+    print('正在开锁中...');
+
+    try {
+      TTLock.controlLock(
+        _lockData!,
+        TTControlAction.unlock,
+        (lockTime, electricQuantity, uniqueId, lockData) {
+          _showSuccess('开锁成功\n电量: ${electricQuantity}%');
+          // 更新锁数据
+          setState(() {
+            _lockData = lockData;
+          });
+        },
+        (errorCode, errorMsg) {
+          _showError(errorCode, errorMsg);
+        },
+      );
+    } catch (e) {
+      _showError(TTLockError.fail, '开锁异常: $e');
+    }
+  }
+
+  /// 获取电池电量
+  Future<void> _getBatteryLevel() async {
+    if (!_checkLockData()) return;
+
+    _showLoading('正在获取电量...');
+
+    try {
+      TTLock.getLockPower(
+        _lockData!,
+        (electricQuantity) {
+          _showSuccess('当前电量: ${electricQuantity}%');
+        },
+        (errorCode, errorMsg) {
+          _showError(errorCode, errorMsg);
+        },
+      );
+    } catch (e) {
+      _showError(TTLockError.fail, '获取电量异常: $e');
+    }
+  }
+
+  /// 获取操作记录
+  Future<void> _getOperateRecord() async {
+    if (!_checkLockData()) return;
+
+    _showLoading('正在获取记录...');
+
+    try {
+      TTLock.getLockOperateRecord(
+        TTOperateRecordType.latest,
+        _lockData!,
+        (operateRecord) {
+          _showSuccess('获取成功');
+          // TODO: 显示详细记录
+          print('操作记录: $operateRecord');
+        },
+        (errorCode, errorMsg) {
+          _showError(errorCode, errorMsg);
+        },
+      );
+    } catch (e) {
+      _showError(TTLockError.fail, '获取记录异常: $e');
+    }
+  }
+
+  /// 显示密码管理对话框
+  void _showPasscodeDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('密码管理'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading:
+                  const Icon(Icons.add_rounded, color: AppTheme.primaryColor),
+              title: const Text('添加密码'),
+              onTap: () {
+                Navigator.pop(context);
+                _showAddPasscodeDialog();
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.edit_rounded, color: AppTheme.primaryColor),
+              title: const Text('修改密码'),
+              onTap: () {
+                Navigator.pop(context);
+                _showModifyPasscodeDialog();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_rounded, color: Colors.red),
+              title: const Text('删除密码'),
+              onTap: () {
+                Navigator.pop(context);
+                _showDeletePasscodeDialog();
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 显示添加密码对话框
+  void _showAddPasscodeDialog() {
+    final passcodeController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('添加密码'),
+        content: TextField(
+          controller: passcodeController,
+          decoration: const InputDecoration(
+            labelText: '请输入4-9位数字密码',
+            hintText: '例如: 123456',
+          ),
+          keyboardType: TextInputType.number,
+          maxLength: 9,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final passcode = passcodeController.text;
+              if (passcode.length < 4 || passcode.length > 9) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('密码长度必须在4-9位之间')),
+                );
+                return;
+              }
+              Navigator.pop(context);
+              _addPasscode(passcode);
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 添加密码
+  Future<void> _addPasscode(String passcode) async {
+    if (!_checkLockData()) return;
+
+    _showLoading('正在添加密码...');
+
+    final startDate = DateTime.now().millisecondsSinceEpoch;
+    final endDate = startDate + (30 * 24 * 60 * 60 * 1000); // 30天后过期
+
+    try {
+      TTLock.createCustomPasscode(
+        passcode,
+        startDate,
+        endDate,
+        _lockData!,
+        () {
+          _showSuccess('密码添加成功');
+        },
+        (errorCode, errorMsg) {
+          _showError(errorCode, errorMsg);
+        },
+      );
+    } catch (e) {
+      _showError(TTLockError.fail, '添加密码异常: $e');
+    }
+  }
+
+  /// 显示修改密码对话框
+  void _showModifyPasscodeDialog() {
+    final oldPasscodeController = TextEditingController();
+    final newPasscodeController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('修改密码'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: oldPasscodeController,
+              decoration: const InputDecoration(labelText: '原密码'),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: newPasscodeController,
+              decoration: const InputDecoration(labelText: '新密码'),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final oldPasscode = oldPasscodeController.text;
+              final newPasscode = newPasscodeController.text;
+              if (oldPasscode.isEmpty || newPasscode.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('请输入原密码和新密码')),
+                );
+                return;
+              }
+              Navigator.pop(context);
+              _modifyPasscode(oldPasscode, newPasscode);
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 修改密码
+  Future<void> _modifyPasscode(String oldPasscode, String newPasscode) async {
+    if (!_checkLockData()) return;
+
+    _showLoading('正在修改密码...');
+
+    final startDate = DateTime.now().millisecondsSinceEpoch;
+    final endDate = startDate + (30 * 24 * 60 * 60 * 1000);
+
+    try {
+      TTLock.modifyPasscode(
+        oldPasscode,
+        newPasscode,
+        startDate,
+        endDate,
+        _lockData!,
+        () {
+          _showSuccess('密码修改成功');
+        },
+        (errorCode, errorMsg) {
+          _showError(errorCode, errorMsg);
+        },
+      );
+    } catch (e) {
+      _showError(TTLockError.fail, '修改密码异常: $e');
+    }
+  }
+
+  /// 显示删除密码对话框
+  void _showDeletePasscodeDialog() {
+    final passcodeController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除密码'),
+        content: TextField(
+          controller: passcodeController,
+          decoration: const InputDecoration(
+            labelText: '请输入要删除的密码',
+          ),
+          keyboardType: TextInputType.number,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final passcode = passcodeController.text;
+              if (passcode.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('请输入要删除的密码')),
+                );
+                return;
+              }
+              Navigator.pop(context);
+              _deletePasscode(passcode);
+            },
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 删除密码
+  Future<void> _deletePasscode(String passcode) async {
+    if (!_checkLockData()) return;
+
+    _showLoading('正在删除密码...');
+
+    try {
+      TTLock.deletePasscode(
+        passcode,
+        _lockData!,
+        () {
+          _showSuccess('密码删除成功');
+        },
+        (errorCode, errorMsg) {
+          _showError(errorCode, errorMsg);
+        },
+      );
+    } catch (e) {
+      _showError(TTLockError.fail, '删除密码异常: $e');
+    }
+  }
+
+  /// 显示卡片管理对话框
+  void _showCardDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('卡片管理'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.credit_card_rounded,
+                  color: AppTheme.primaryColor),
+              title: const Text('添加卡片'),
+              subtitle: const Text('请将卡片靠近手机'),
+              onTap: () {
+                Navigator.pop(context);
+                _addCard();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_rounded, color: Colors.red),
+              title: const Text('清除所有卡片'),
+              onTap: () {
+                Navigator.pop(context);
+                _clearAllCards();
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 添加卡片
+  Future<void> _addCard() async {
+    if (!_checkLockData()) return;
+
+    _showLoading('请刷卡...');
+
+    final startDate = DateTime.now().millisecondsSinceEpoch;
+    final endDate = startDate + (30 * 24 * 60 * 60 * 1000);
+
+    try {
+      TTLock.addCard(
+        null,
+        startDate,
+        endDate,
+        _lockData!,
+        () {
+          _showLoading('等待刷卡...');
+        },
+        (cardNumber) {
+          _showSuccess('卡片添加成功\n卡号: $cardNumber');
+        },
+        (errorCode, errorMsg) {
+          _showError(errorCode, errorMsg);
+        },
+      );
+    } catch (e) {
+      _showError(TTLockError.fail, '添加卡片异常: $e');
+    }
+  }
+
+  /// 清除所有卡片
+  Future<void> _clearAllCards() async {
+    if (!_checkLockData()) return;
+
+    _showLoading('正在清除...');
+
+    try {
+      TTLock.clearAllCards(
+        _lockData!,
+        () {
+          _showSuccess('所有卡片已清除');
+        },
+        (errorCode, errorMsg) {
+          _showError(errorCode, errorMsg);
+        },
+      );
+    } catch (e) {
+      _showError(TTLockError.fail, '清除卡片异常: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final room = widget.room;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text('${room['name']} - 房间详情'),
         centerTitle: true,
+        actions: [
+          // 刷新设备按钮
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: '重新加载设备',
+            onPressed: _showLoadDeviceDialog,
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // 房间基本信息卡片
-            _buildRoomInfoCard(room),
-            
-            // 操作按钮区域
-            _buildActionButtons(room),
-          ],
+      body: ProgressHud(
+        child: Builder(
+          builder: (context) {
+            _context = context;
+            return SingleChildScrollView(
+              child: Column(
+                children: [
+                  // 房间基本信息卡片
+                  _buildRoomInfoCard(room),
+
+                  // 操作按钮区域
+                  _buildActionButtons(room),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -91,7 +760,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // 中间：房间名称和类型
                 Expanded(
                   child: Column(
@@ -144,7 +813,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     ],
                   ),
                 ),
-                
+
                 // 右侧：房态标签
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -188,7 +857,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
               ],
             ),
           ),
-          
+
           // 底部信息统计条
           Container(
             margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -204,19 +873,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildInfoStatItem('楼栋', room['building'] ?? '未设置', Icons.apartment_rounded),
+                _buildInfoStatItem(
+                    '楼栋', room['building'] ?? '未设置', Icons.apartment_rounded),
                 Container(
                   width: 1,
                   height: 40,
                   color: Colors.white.withOpacity(0.2),
                 ),
-                _buildInfoStatItem('楼层', '${room['floor'] ?? 0}层', Icons.layers_rounded),
+                _buildInfoStatItem(
+                    '楼层', '${room['floor'] ?? 0}层', Icons.layers_rounded),
                 Container(
                   width: 1,
                   height: 40,
                   color: Colors.white.withOpacity(0.2),
                 ),
-                _buildInfoStatItem('电量', '${room['battery']}%', Icons.battery_full_rounded),
+                _buildInfoStatItem(
+                    '电量', '${room['battery']}%', Icons.battery_full_rounded),
               ],
             ),
           ),
@@ -290,26 +962,58 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
             ],
           ),
           const SizedBox(height: 16),
-          
+
           // 智能锁控制
           if (room['devices'].contains('lock'))
             _buildButtonGroup(
               '智能锁控制',
               [
-                {'icon': Icons.bluetooth_rounded, 'label': '蓝牙开锁'},
-                {'icon': Icons.router_rounded, 'label': '网关开锁'},
-                {'icon': Icons.key_rounded, 'label': '电子钥匙'},
-                {'icon': Icons.password_rounded, 'label': '密码管理'},
-                {'icon': Icons.credit_card_rounded, 'label': '发卡管理'},
-                {'icon': Icons.manage_accounts_rounded, 'label': '钥匙管理'},
-                {'icon': Icons.history_rounded, 'label': '开锁记录'},
-                {'icon': Icons.lock_open_rounded, 'label': '常开模式'},
-                {'icon': Icons.router_rounded, 'label': '网关管理'},
-                {'icon': Icons.link_off_rounded, 'label': '解除绑定'},
+                {
+                  'icon': Icons.bluetooth_rounded,
+                  'label': '蓝牙开锁',
+                  'action': _unlock
+                },
+                {
+                  'icon': Icons.battery_full_rounded,
+                  'label': '获取电量',
+                  'action': _getBatteryLevel
+                },
+                {
+                  'icon': Icons.password_rounded,
+                  'label': '密码管理',
+                  'action': _showPasscodeDialog
+                },
+                {
+                  'icon': Icons.credit_card_rounded,
+                  'label': '发卡管理',
+                  'action': _showCardDialog
+                },
+                {
+                  'icon': Icons.history_rounded,
+                  'label': '开锁记录',
+                  'action': _getOperateRecord
+                },
+                {'icon': Icons.key_rounded, 'label': '电子钥匙', 'action': null},
+                {
+                  'icon': Icons.manage_accounts_rounded,
+                  'label': '钥匙管理',
+                  'action': null
+                },
+                {
+                  'icon': Icons.lock_open_rounded,
+                  'label': '常开模式',
+                  'action': null
+                },
+                {'icon': Icons.router_rounded, 'label': '网关管理', 'action': null},
+                {
+                  'icon': Icons.link_off_rounded,
+                  'label': '解除绑定',
+                  'action': null
+                },
               ],
             ),
           const SizedBox(height: 16),
-          
+
           // 电源设备控制
           if (room['devices'].contains('light'))
             _buildButtonGroup(
@@ -353,28 +1057,34 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           crossAxisSpacing: 8,
           childAspectRatio: 0.85,
           children: buttons.map((btn) {
-            return _buildActionButton(btn['icon']!, btn['label']!);
+            return _buildActionButton(
+              btn['icon']!,
+              btn['label']!,
+              btn['action'],
+            );
           }).toList(),
         ),
       ],
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label) {
+  Widget _buildActionButton(IconData icon, String label, VoidCallback? action) {
     return Card(
       elevation: 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
       ),
       child: InkWell(
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('点击了 $label'),
-              duration: const Duration(seconds: 1),
-            ),
-          );
-        },
+        onTap: action != null
+            ? action
+            : () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$label 功能开发中'),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.all(8),

@@ -22,7 +22,9 @@ if (flutterVersionName == null) {
 }
 
 android {
-    compileSdkVersion 34
+    compileSdkVersion 36
+    // 不指定特定NDK版本，让系统自动选择可用的版本
+    // ndkVersion "27.0.12077973"  # 如果需要特定版本可以取消注释
 
     lintOptions {
         disable 'InvalidPackage'

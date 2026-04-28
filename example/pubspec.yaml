@@ -19,6 +19,8 @@ dependencies:
   # path_provider: ^2.1.1  # 已移除，jni 插件与中文路径不兼容
   # shared_preferences: 2.2.0  # 暂时禁用，Kotlin版本兼容性问题
   url_launcher: ^6.0.20
+  http: ^1.1.0  # 用于 TTLock API 调用
+  crypto: ^3.0.3  # 用于 MD5 加密
   
   ttlock_flutter:
     # When depending on this package from a real application you should use:
