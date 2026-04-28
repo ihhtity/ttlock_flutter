@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../theme.dart';
 
 /// 隐私设置页面
 class PrivacySettingsPage extends StatefulWidget {

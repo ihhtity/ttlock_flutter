@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../theme.dart';
 
 /// 设备转移页面
 class DeviceTransferPage extends StatefulWidget {

@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../theme.dart';
+import '../../../theme.dart';
 
 /// 关于页面
 class AboutPage extends StatefulWidget {

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../theme.dart';
 
 /// 厂商账号管理页面
 class VendorAccountPage extends StatefulWidget {

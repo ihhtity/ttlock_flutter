@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../theme.dart';
 
 /// 收款账号管理页面
 class PaymentAccountPage extends StatefulWidget {

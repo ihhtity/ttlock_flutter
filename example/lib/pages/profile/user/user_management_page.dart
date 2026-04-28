@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import '../../theme.dart';
-import 'vendor_account_page.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../theme.dart';
+import '../account/vendor_account_page.dart';
 
 /// 用户管理页面
 class UserManagementPage extends StatefulWidget {

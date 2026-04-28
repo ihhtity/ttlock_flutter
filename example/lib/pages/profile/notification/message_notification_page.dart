@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import '../../theme.dart';
+﻿import 'package:flutter/material.dart';
+import '../../../theme.dart';
 
 /// 消息通知页面
 class MessageNotificationPage extends StatefulWidget {
