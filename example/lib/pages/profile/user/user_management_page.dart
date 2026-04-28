@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../theme.dart';
 import '../account/vendor_account_page.dart';
 

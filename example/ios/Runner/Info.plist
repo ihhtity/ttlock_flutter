@@ -24,6 +24,18 @@
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>宝士力得需要通过蓝牙控制智能锁</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>宝士力得需要通过蓝牙连接智能锁设备</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>宝士力得需要获取位置信息以使用蓝牙功能（Android系统要求）</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>宝士力得需要获取位置信息以使用蓝牙功能</string>
+	<key>NSCameraUsageDescription</key>
+	<string>宝士力得需要使用相机扫描设备二维码</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>宝士力得需要保存设备配置到相册</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>宝士力得需要访问相册以选择设备图片</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

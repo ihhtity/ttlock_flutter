@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme.dart';
+import '../../../theme.dart';
 
 /// 添加设备页面
 class AddDevicePage extends StatelessWidget {
@@ -37,55 +37,110 @@ class AddDevicePage extends StatelessWidget {
             title: '智能锁',
             items: [
               {'name': '所有锁', 'icon': Icons.lock_rounded, 'hasImage': true},
-              {'name': '门锁', 'icon': Icons.door_front_door_rounded, 'hasImage': true},
-              {'name': '挂锁', 'icon': Icons.lock_outline_rounded, 'hasImage': true},
-              {'name': '保险箱锁', 'icon': Icons.security_rounded, 'hasImage': true},
+              {
+                'name': '门锁',
+                'icon': Icons.door_front_door_rounded,
+                'hasImage': true
+              },
+              {
+                'name': '挂锁',
+                'icon': Icons.lock_outline_rounded,
+                'hasImage': true
+              },
+              {
+                'name': '保险箱锁',
+                'icon': Icons.security_rounded,
+                'hasImage': true
+              },
               {'name': '智能锁芯', 'icon': Icons.tune_rounded, 'hasImage': true},
-              {'name': '车位锁', 'icon': Icons.local_parking_rounded, 'hasImage': true},
+              {
+                'name': '车位锁',
+                'icon': Icons.local_parking_rounded,
+                'hasImage': true
+              },
               {'name': '柜锁', 'icon': Icons.chair_rounded, 'hasImage': true},
-              {'name': '自行车锁', 'icon': Icons.pedal_bike_rounded, 'hasImage': true},
-              {'name': '遥控设备', 'icon': Icons.gamepad_rounded, 'hasImage': false},
+              {
+                'name': '自行车锁',
+                'icon': Icons.pedal_bike_rounded,
+                'hasImage': true
+              },
+              {
+                'name': '遥控设备',
+                'icon': Icons.gamepad_rounded,
+                'hasImage': false
+              },
             ],
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // 网关分类
           _buildSection(
             title: '网关',
             items: [
-              {'name': 'G1 (Wi-Fi)', 'subtitle': '2.4G', 'icon': Icons.router_rounded, 'hasImage': true},
-              {'name': 'G2 (Wi-Fi)', 'subtitle': '2.4G', 'icon': Icons.wifi_rounded, 'hasImage': true},
+              {
+                'name': 'G1 (Wi-Fi)',
+                'subtitle': '2.4G',
+                'icon': Icons.router_rounded,
+                'hasImage': true
+              },
+              {
+                'name': 'G2 (Wi-Fi)',
+                'subtitle': '2.4G',
+                'icon': Icons.wifi_rounded,
+                'hasImage': true
+              },
               {'name': 'G3 (有线)', 'icon': Icons.lan_rounded, 'hasImage': true},
-              {'name': 'G4 (4G)', 'icon': Icons.signal_cellular_alt_rounded, 'hasImage': true},
-              {'name': 'G5 (Wi-Fi)', 'subtitle': '2.4G&5G', 'icon': Icons.wifi_tethering_rounded, 'hasImage': true},
-              {'name': 'G6 (Matter)', 'icon': Icons.device_hub_rounded, 'hasImage': true},
+              {
+                'name': 'G4 (4G)',
+                'icon': Icons.signal_cellular_alt_rounded,
+                'hasImage': true
+              },
+              {
+                'name': 'G5 (Wi-Fi)',
+                'subtitle': '2.4G&5G',
+                'icon': Icons.wifi_tethering_rounded,
+                'hasImage': true
+              },
+              {
+                'name': 'G6 (Matter)',
+                'icon': Icons.device_hub_rounded,
+                'hasImage': true
+              },
             ],
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // 摄像头分类
           _buildSection(
             title: '摄像头',
             items: [
               {'name': 'TC2', 'icon': Icons.videocam_rounded, 'hasImage': true},
-              {'name': 'DB2', 'icon': Icons.camera_alt_rounded, 'hasImage': true},
+              {
+                'name': 'DB2',
+                'icon': Icons.camera_alt_rounded,
+                'hasImage': true
+              },
             ],
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // 门磁分类
           _buildSection(
             title: '门磁',
             items: [
-              {'name': '门磁传感器', 'icon': Icons.sensors_rounded, 'hasImage': true},
+              {
+                'name': '门磁传感器',
+                'icon': Icons.sensors_rounded,
+                'hasImage': true
+              },
             ],
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // 电源分类
           _buildSection(
             title: '电源',
@@ -119,7 +174,7 @@ class AddDevicePage extends StatelessWidget {
             ),
           ),
         ),
-        
+
         // 白色大卡片容器
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -183,9 +238,9 @@ class AddDevicePage extends StatelessWidget {
                   color: const Color(0xFF333333),
                 ),
               ),
-              
+
               const SizedBox(width: 10),
-              
+
               // 设备名称和副标题
               Expanded(
                 child: Column(
