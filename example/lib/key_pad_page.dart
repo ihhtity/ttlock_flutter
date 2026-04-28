@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:ttlock_flutter/ttelectricMeter.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:ttlock_flutter/ttlock/ttelectricMeter.dart';
 import 'package:bmprogresshud/progresshud.dart';
-import 'package:ttlock_flutter/ttlock.dart';
-import 'package:ttlock_flutter/ttremoteKeypad.dart';
+import 'package:ttlock_flutter/ttlock/ttlock.dart';
+import 'package:ttlock_flutter/ttlock/ttremoteKeypad.dart';
 
 class KeyPadPage extends StatefulWidget {
   KeyPadPage(

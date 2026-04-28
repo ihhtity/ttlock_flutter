@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:ttlock_flutter/ttlock.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:ttlock_flutter/ttlock/ttlock.dart';
 import 'package:bmprogresshud/progresshud.dart';
 
 class LockPage extends StatefulWidget {

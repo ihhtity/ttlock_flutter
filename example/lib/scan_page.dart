@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:ttlock_flutter/ttelectricMeter.dart';
-import 'package:ttlock_flutter/ttgateway.dart';
-import 'package:ttlock_flutter/ttlock.dart';
-import 'package:ttlock_flutter/ttremoteKeypad.dart';
-import 'package:ttlock_flutter/ttwaterMeter.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:ttlock_flutter/ttlock/ttelectricMeter.dart';
+import 'package:ttlock_flutter/ttlock/ttgateway.dart';
+import 'package:ttlock_flutter/ttlock/ttlock.dart';
+import 'package:ttlock_flutter/ttlock/ttremoteKeypad.dart';
+import 'package:ttlock_flutter/ttlock/ttwaterMeter.dart';
 import 'package:ttlock_flutter_example/gateway_page.dart';
 import 'package:ttlock_flutter_example/water_meter_page.dart';
 import 'config.dart';

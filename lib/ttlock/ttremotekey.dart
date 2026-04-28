@@ -1,4 +1,4 @@
-import 'package:ttlock_flutter/ttlock.dart';
+﻿import 'ttlock.dart';
 
 class TTRemoteKey {
   static const String COMMAND_START_SCAN_REMOTE_KEY = "startScanRemoteKey";

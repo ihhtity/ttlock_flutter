@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:bmprogresshud/progresshud.dart';
-import 'package:ttlock_flutter/ttelectricMeter.dart';
-import 'package:ttlock_flutter/ttwaterMeter.dart';
+import 'package:ttlock_flutter/ttlock/ttelectricMeter.dart';
+import 'package:ttlock_flutter/ttlock/ttwaterMeter.dart';
 import 'scan_page.dart';
 import 'config.dart';
 import 'theme.dart';

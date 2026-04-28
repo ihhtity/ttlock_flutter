@@ -1,7 +1,7 @@
-// import 'package:ttlock_flutter/ttlock.dart';
+﻿// import 'ttlock.dart';
 import 'dart:convert' as convert;
 
-import 'package:ttlock_flutter/ttlock.dart';
+import 'ttlock.dart';
 
 class TTElectricMeter {
   static const String COMMAND_CONFIG_SERVER_ELECTRIC_METER =

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'vendor_info.dart';
 
 /// 设备类型枚举
 enum DeviceType {

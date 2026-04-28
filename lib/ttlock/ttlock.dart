@@ -1,9 +1,9 @@
-import 'package:flutter/services.dart';
-import 'package:ttlock_flutter/ttdoorSensor.dart';
-import 'package:ttlock_flutter/ttelectricMeter.dart';
-import 'package:ttlock_flutter/ttremoteKey.dart';
-import 'package:ttlock_flutter/ttremoteKeypad.dart';
-import 'package:ttlock_flutter/ttwaterMeter.dart';
+﻿import 'package:flutter/services.dart';
+import 'ttdoorSensor.dart';
+import 'ttelectricMeter.dart';
+import 'ttremotekey.dart';
+import 'ttremoteKeypad.dart';
+import 'package:ttlock_flutter/ttlock/ttwaterMeter.dart';
 import 'dart:convert' as convert;
 import 'ttgateway.dart';
 
@@ -1670,10 +1670,12 @@ class TTLock {
         commandList.length > 0 ? commandList.first[CALLBACK_OTHER_FAIL] : null;
     //多功能键盘添加指纹时返回重复指纹失败时，不移除
     if (commandList.length > 0 &&
-        !(command == TTRemoteKeypad.COMMAND_MULTIFUNCTIONAL_REMOTE_KEYPAD_ADD_FINGERPRINT &&
-            data["errorDevice"] == TTErrorDevice.keyPad.index
-            && errorCode == TTRemoteKeyPadAccessoryError.duplicateFingerprint.index)
-    ) {
+        !(command ==
+                TTRemoteKeypad
+                    .COMMAND_MULTIFUNCTIONAL_REMOTE_KEYPAD_ADD_FINGERPRINT &&
+            data["errorDevice"] == TTErrorDevice.keyPad.index &&
+            errorCode ==
+                TTRemoteKeyPadAccessoryError.duplicateFingerprint.index)) {
       commandList.removeAt(0);
     }
     //网关失败处理
@@ -1692,8 +1694,7 @@ class TTLock {
         command == TTDoorSensor.COMMAND_INIT_DOOR_SENSOR ||
         command == TTRemoteKeypad.COMMAND_INIT_REMOTE_KEYPAD) {
       TTRemoteFailedCallback? failedCallback = callBack;
-      TTRemoteAccessoryError error =
-      TTRemoteAccessoryError.values[0];
+      TTRemoteAccessoryError error = TTRemoteAccessoryError.values[0];
       if (failedCallback != null) {
         failedCallback(error, errorMessage);
       }

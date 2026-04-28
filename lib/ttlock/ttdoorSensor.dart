@@ -1,4 +1,4 @@
-import 'package:ttlock_flutter/ttlock.dart';
+﻿import 'ttlock.dart';
 
 class TTDoorSensor {
   static const String COMMAND_START_SCAN_DOOR_SENSOR = "doorSensorStartScan";

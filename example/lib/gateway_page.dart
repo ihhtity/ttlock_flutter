@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:bmprogresshud/progresshud.dart';
-import 'package:ttlock_flutter/ttgateway.dart';
-import 'package:ttlock_flutter/ttlock.dart';
+import 'package:ttlock_flutter/ttlock/ttgateway.dart';
+import 'package:ttlock_flutter/ttlock/ttlock.dart';
 
 import 'config.dart';
 

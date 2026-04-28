@@ -1,7 +1,7 @@
-import 'package:bmprogresshud/progresshud.dart';
+﻿import 'package:bmprogresshud/progresshud.dart';
 import 'package:flutter/material.dart';
-import 'package:ttlock_flutter/ttlock.dart';
-import 'package:ttlock_flutter/ttwaterMeter.dart';
+import 'package:ttlock_flutter/ttlock/ttlock.dart';
+import 'package:ttlock_flutter/ttlock/ttwaterMeter.dart';
 
 enum Command {
   reset

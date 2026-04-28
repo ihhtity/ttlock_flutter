@@ -1,4 +1,4 @@
-import 'package:ttlock_flutter/ttlock.dart';
+﻿import 'ttlock.dart';
 import 'dart:convert' as convert;
 
 class TTGateway {
