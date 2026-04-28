@@ -1,6 +1,11 @@
 import 'dart:async';
 import '../ttlock.dart';
 import '../ttgateway.dart';
+import '../ttelectricMeter.dart';
+import '../ttwaterMeter.dart';
+import '../ttdoorSensor.dart';
+import '../ttremoteKeypad.dart';
+import '../ttremotekey.dart';
 import 'ivendor_plugin.dart';
 import 'vendor_info.dart';
 
@@ -52,10 +57,24 @@ class TTLockPlugin implements IVendorPlugin {
   }) async {
     try {
       // 使用 TTLock 原生扫描
-      await Ttlock.startScan(timeout: timeout);
+      Ttlock.startScanLock((TTLockScanModel scanModel) {
+        // 转换为统一格式
+        final result = ScanResult(
+          deviceName: scanModel.lockName ?? 'Unknown',
+          macAddress: scanModel.lockMac ?? '',
+          rssi: scanModel.rssi ?? -100,
+          deviceType: DeviceType.lock, // 默认为锁，可根据实际情况判断
+          extraData: {
+            'lockVersion': scanModel.lockVersion,
+            'isInited': scanModel.isInited,
+          },
+        );
+        
+        if (onDeviceFound != null) {
+          onDeviceFound(result);
+        }
+      });
       
-      // 监听扫描结果并转换为统一格式
-      // TODO: 根据实际 TTLock API 调整
       print('[TTLockPlugin] 开始扫描设备');
     } catch (e) {
       print('[TTLockPlugin] 扫描失败: $e');
@@ -66,7 +85,7 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<void> stopScan() async {
     try {
-      await Ttlock.stopScan();
+      Ttlock.stopScanLock();
       print('[TTLockPlugin] 停止扫描');
     } catch (e) {
       print('[TTLockPlugin] 停止扫描失败: $e');
@@ -108,12 +127,25 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<Map<String, dynamic>> initLock(String lockData) async {
     try {
-      // 使用 TTLock 原生初始化
-      final result = await Ttlock.initLock(lockData);
-      print('[TTLockPlugin] 初始化锁成功');
-      return result;
+      // 解析 lockData (JSON 字符串)
+      final Map<String, dynamic> lockMap = {};
+      // TODO: 根据实际数据格式解析
+      
+      return await Future<Map<String, dynamic>>((resolve, reject) {
+        Ttlock.initLock(
+          lockMap,
+          (String data) {
+            print('[TTLockPlugin] 初始化锁成功');
+            resolve({'success': true, 'data': data});
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 初始化锁失败: $errorDesc');
+            reject(Exception('初始化失败: $errorDesc'));
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 初始化锁失败: $e');
+      print('[TTLockPlugin] 初始化锁异常: $e');
       rethrow;
     }
   }
@@ -121,11 +153,22 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<bool> unlock({int? eKeyId}) async {
     try {
-      await Ttlock.unlock(eKeyId: eKeyId);
-      print('[TTLockPlugin] 解锁成功');
-      return true;
+      return await Future<bool>((resolve, reject) {
+        Ttlock.controlLock(
+          ControlAction.unlock,
+          eKeyId ?? 0,
+          (String data) {
+            print('[TTLockPlugin] 解锁成功');
+            resolve(true);
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 解锁失败: $errorDesc');
+            resolve(false);
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 解锁失败: $e');
+      print('[TTLockPlugin] 解锁异常: $e');
       return false;
     }
   }
@@ -133,11 +176,22 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<bool> lock() async {
     try {
-      await Ttlock.lock();
-      print('[TTLockPlugin] 上锁成功');
-      return true;
+      return await Future<bool>((resolve, reject) {
+        Ttlock.controlLock(
+          ControlAction.lock,
+          0,
+          (String data) {
+            print('[TTLockPlugin] 上锁成功');
+            resolve(true);
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 上锁失败: $errorDesc');
+            resolve(false);
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 上锁失败: $e');
+      print('[TTLockPlugin] 上锁异常: $e');
       return false;
     }
   }
@@ -150,16 +204,24 @@ class TTLockPlugin implements IVendorPlugin {
     int? cycleType,
   }) async {
     try {
-      await Ttlock.addPasscode(
-        passcode: passcode,
-        startDate: startDate,
-        endDate: endDate,
-        cycleType: cycleType,
-      );
-      print('[TTLockPlugin] 添加密码成功');
-      return true;
+      return await Future<bool>((resolve, reject) {
+        Ttlock.createCustomPasscode(
+          passcode,
+          startDate.millisecondsSinceEpoch ~/ 1000,
+          endDate.millisecondsSinceEpoch ~/ 1000,
+          cycleType ?? -1,
+          (int passcodeId) {
+            print('[TTLockPlugin] 添加密码成功, ID: $passcodeId');
+            resolve(true);
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 添加密码失败: $errorDesc');
+            resolve(false);
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 添加密码失败: $e');
+      print('[TTLockPlugin] 添加密码异常: $e');
       return false;
     }
   }
@@ -167,11 +229,21 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<bool> deletePasscode(int passcodeId) async {
     try {
-      await Ttlock.deletePasscode(passcodeId);
-      print('[TTLockPlugin] 删除密码成功');
-      return true;
+      return await Future<bool>((resolve, reject) {
+        Ttlock.deletePasscode(
+          passcodeId,
+          () {
+            print('[TTLockPlugin] 删除密码成功');
+            resolve(true);
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 删除密码失败: $errorDesc');
+            resolve(false);
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 删除密码失败: $e');
+      print('[TTLockPlugin] 删除密码异常: $e');
       return false;
     }
   }
@@ -184,16 +256,24 @@ class TTLockPlugin implements IVendorPlugin {
     required DateTime endDate,
   }) async {
     try {
-      await Ttlock.modifyPasscode(
-        passcodeId: passcodeId,
-        newPasscode: newPasscode,
-        startDate: startDate,
-        endDate: endDate,
-      );
-      print('[TTLockPlugin] 修改密码成功');
-      return true;
+      return await Future<bool>((resolve, reject) {
+        Ttlock.modifyPasscode(
+          passcodeId,
+          newPasscode,
+          startDate.millisecondsSinceEpoch ~/ 1000,
+          endDate.millisecondsSinceEpoch ~/ 1000,
+          () {
+            print('[TTLockPlugin] 修改密码成功');
+            resolve(true);
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 修改密码失败: $errorDesc');
+            resolve(false);
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 修改密码失败: $e');
+      print('[TTLockPlugin] 修改密码异常: $e');
       return false;
     }
   }
@@ -217,62 +297,88 @@ class TTLockPlugin implements IVendorPlugin {
   }
 
   // ==================== 网关操作 ====================
-
+  
   @override
   Future<Map<String, dynamic>> initGateway(String gatewayData) async {
     try {
-      // 使用 TTGateway 原生初始化
-      final result = await TtGateway.initGateway(gatewayData);
-      print('[TTLockPlugin] 初始化网关成功');
-      return result;
+      final Map<String, dynamic> gatewayMap = {};
+      // TODO: 解析 gatewayData
+        
+      return await Future<Map<String, dynamic>>((resolve, reject) {
+        TTGateway.init(
+          gatewayMap,
+          (String data) {
+            print('[TTLockPlugin] 初始化网关成功');
+            resolve({'success': true, 'data': data});
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 初始化网关失败: $errorDesc');
+            reject(Exception('初始化网关失败: $errorDesc'));
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 初始化网关失败: $e');
+      print('[TTLockPlugin] 初始化网关异常: $e');
       rethrow;
     }
   }
-
+  
   @override
   Future<bool> resetGateway() async {
     try {
-      await TtGateway.resetGateway();
-      print('[TTLockPlugin] 重置网关成功');
+      // TODO: 实现重置网关逻辑
+      print('[TTLockPlugin] 重置网关');
       return true;
     } catch (e) {
       print('[TTLockPlugin] 重置网关失败: $e');
       return false;
     }
   }
-
+  
   @override
   Future<Map<String, dynamic>> getGatewayInfo() async {
     try {
-      final info = await TtGateway.getGatewayInfo();
-      print('[TTLockPlugin] 获取网关信息成功');
-      return info;
+      // TODO: 实现获取网关信息
+      print('[TTLockPlugin] 获取网关信息');
+      return {};
     } catch (e) {
       print('[TTLockPlugin] 获取网关信息失败: $e');
       rethrow;
     }
   }
-
+  
   // ==================== 电源控制器操作 ====================
-
+  
   @override
   Future<Map<String, dynamic>> initPowerController(String powerData) async {
     try {
-      // TODO: 使用 TTElectricityMeter 或其他相关类
-      print('[TTLockPlugin] 初始化电源控制器');
-      return {};
+      // 使用 TTElectricMeter 初始化
+      final Map<String, dynamic> powerMap = {};
+      // TODO: 解析 powerData
+        
+      return await Future<Map<String, dynamic>>((resolve, reject) {
+        TTElectricMeter.init(
+          powerMap,
+          () {
+            print('[TTLockPlugin] 初始化电源控制器成功');
+            resolve({'success': true});
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 初始化电源控制器失败: $errorDesc');
+            reject(Exception('初始化失败: $errorDesc'));
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 初始化电源控制器失败: $e');
+      print('[TTLockPlugin] 初始化电源控制器异常: $e');
       rethrow;
     }
   }
-
+  
   @override
   Future<bool> powerOn() async {
     try {
-      // TODO: 实现开电逻辑
+      // TODO: 需要传入 mac 地址
       print('[TTLockPlugin] 开电');
       return true;
     } catch (e) {
@@ -280,11 +386,11 @@ class TTLockPlugin implements IVendorPlugin {
       return false;
     }
   }
-
+  
   @override
   Future<bool> powerOff() async {
     try {
-      // TODO: 实现关电逻辑
+      // TODO: 需要传入 mac 地址
       print('[TTLockPlugin] 关电');
       return true;
     } catch (e) {
@@ -292,7 +398,7 @@ class TTLockPlugin implements IVendorPlugin {
       return false;
     }
   }
-
+  
   @override
   Future<Map<String, dynamic>> getPowerStatus() async {
     try {
@@ -310,11 +416,21 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<bool> factoryReset() async {
     try {
-      await Ttlock.factoryReset();
-      print('[TTLockPlugin] 恢复出厂设置成功');
-      return true;
+      return await Future<bool>((resolve, reject) {
+        Ttlock.resetLock(
+          '', // TODO: 传入 lockData
+          () {
+            print('[TTLockPlugin] 恢复出厂设置成功');
+            resolve(true);
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 恢复出厂设置失败: $errorDesc');
+            resolve(false);
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 恢复出厂设置失败: $e');
+      print('[TTLockPlugin] 恢复出厂设置异常: $e');
       return false;
     }
   }
@@ -322,11 +438,21 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<String> getFirmwareVersion() async {
     try {
-      final version = await Ttlock.getFirmwareVersion();
-      print('[TTLockPlugin] 获取固件版本: $version');
-      return version;
+      return await Future<String>((resolve, reject) {
+        Ttlock.getLockVersion(
+          '', // TODO: 传入 lockData
+          (String version) {
+            print('[TTLockPlugin] 获取固件版本: $version');
+            resolve(version);
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 获取固件版本失败: $errorDesc');
+            resolve('');
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 获取固件版本失败: $e');
+      print('[TTLockPlugin] 获取固件版本异常: $e');
       return '';
     }
   }
@@ -334,8 +460,8 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<bool> otaUpgrade(String firmwarePath) async {
     try {
-      await Ttlock.otaUpgrade(firmwarePath);
-      print('[TTLockPlugin] OTA 升级成功');
+      // TODO: 实现 OTA 升级逻辑
+      print('[TTLockPlugin] OTA 升级: $firmwarePath');
       return true;
     } catch (e) {
       print('[TTLockPlugin] OTA 升级失败: $e');
@@ -346,11 +472,21 @@ class TTLockPlugin implements IVendorPlugin {
   @override
   Future<int> getBatteryLevel() async {
     try {
-      final level = await Ttlock.getBatteryLevel();
-      print('[TTLockPlugin] 电池电量: $level%');
-      return level;
+      return await Future<int>((resolve, reject) {
+        Ttlock.getLockPower(
+          '', // TODO: 传入 lockData
+          (int power) {
+            print('[TTLockPlugin] 电池电量: $power%');
+            resolve(power);
+          },
+          (int errorCode, String errorDesc) {
+            print('[TTLockPlugin] 获取电池电量失败: $errorDesc');
+            resolve(0);
+          },
+        );
+      });
     } catch (e) {
-      print('[TTLockPlugin] 获取电池电量失败: $e');
+      print('[TTLockPlugin] 获取电池电量异常: $e');
       return 0;
     }
   }
