@@ -13,6 +13,7 @@ import (
 type AuthService struct {
 	userRepo *repository.UserRepository
 	adminRepo *repository.AdminRepository
+	verificationRepo *repository.VerificationRepository
 }
 
 // NewAuthService 创建认证服务
@@ -20,6 +21,7 @@ func NewAuthService() *AuthService {
 	return &AuthService{
 		userRepo: repository.NewUserRepository(),
 		adminRepo: repository.NewAdminRepository(),
+		verificationRepo: repository.NewVerificationRepository(),
 	}
 }
 
@@ -208,6 +210,26 @@ func (s *AuthService) Register(req *model.RegisterRequest) error {
 	if err := s.userRepo.Create(user, req.Password); err != nil {
 		logger.Error("创建用户失败", err)
 		return errors.New("注册失败")
+	}
+
+	// 注册成功后，标记验证码为已使用（type=1表示注册）
+	phoneStr := ""
+	if req.Phone != nil {
+		phoneStr = *req.Phone
+	}
+	emailStr := ""
+	if req.Email != nil {
+		emailStr = *req.Email
+	}
+	
+	verificationCode, err := s.verificationRepo.FindValidCode(phoneStr, emailStr, 1)
+	if err == nil && verificationCode != nil {
+		if markErr := s.verificationRepo.MarkAsUsed(verificationCode.ID); markErr != nil {
+			logger.Warn("标记验证码为已使用失败", markErr)
+			// 不影响注册成功，只记录警告
+		} else {
+			logger.Info("验证码已标记为已使用", zap.Int("code_id", verificationCode.ID))
+		}
 	}
 
 	logger.Info("用户注册成功", zap.Int("user_id", user.ID))

@@ -107,7 +107,7 @@ func (s *VerificationService) SendCode(phone, email string, codeType int) error 
 	return nil
 }
 
-// VerifyCode 验证验证码
+// VerifyCode 验证验证码（仅验证，不标记为已使用）
 func (s *VerificationService) VerifyCode(phone, email, code string, codeType int) error {
 	// 查找有效的验证码
 	verificationCode, err := s.verificationRepo.FindValidCode(phone, email, codeType)
@@ -125,17 +125,14 @@ func (s *VerificationService) VerifyCode(phone, email, code string, codeType int
 		return errors.New("验证码错误")
 	}
 
-	// 标记为已使用
-	if err := s.verificationRepo.MarkAsUsed(verificationCode.ID); err != nil {
-		logger.Error("更新验证码状态失败", err)
-	}
-
+	// 注意：这里不标记为已使用，只在注册/重置密码成功后才标记
+	// 这样如果后续操作失败，用户可以重新尝试
 	return nil
 }
 
 // ResetPassword 重置密码
 func (s *VerificationService) ResetPassword(phone, email, code, newPassword string) error {
-	// 先验证验证码
+	// 先验证验证码（不标记为已使用）
 	if err := s.VerifyCode(phone, email, code, 2); err != nil { // 2 = 找回密码
 		return err
 	}
@@ -163,6 +160,16 @@ func (s *VerificationService) ResetPassword(phone, email, code, newPassword stri
 	if err := s.userRepo.UpdatePassword(user.ID, newPassword); err != nil {
 		logger.Error("更新密码失败", err)
 		return errors.New("重置密码失败")
+	}
+
+	// 密码重置成功后，标记验证码为已使用
+	verificationCode, findErr := s.verificationRepo.FindValidCode(phone, email, 2)
+	if findErr == nil && verificationCode != nil {
+		if markErr := s.verificationRepo.MarkAsUsed(verificationCode.ID); markErr != nil {
+			logger.Warn("标记验证码为已使用失败", markErr)
+		} else {
+			logger.Info("验证码已标记为已使用", zap.Int("code_id", verificationCode.ID))
+		}
 	}
 
 	logger.Info("密码重置成功", zap.Int("user_id", user.ID))
