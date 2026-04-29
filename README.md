@@ -80,6 +80,23 @@ test_api.bat
 
 ### 更新日志
 
+#### 2026-04-29 - 修复注册功能：允许邮箱单独注册（phone字段可为NULL）
+**问题：** 使用邮箱注册时报错 `Error 1048 (23000): Column 'phone' cannot be null`
+
+**原因：** 数据库 `clients` 表的 `phone` 字段定义为 `NOT NULL`，但邮箱注册时不传手机号
+
+**修复：**
+- ✅ 修改数据库表结构：`ALTER TABLE clients MODIFY COLUMN phone VARCHAR(20) DEFAULT NULL`
+- ✅ 更新 `init_db.sql` 建表脚本，将 `phone` 字段改为允许 NULL
+- ✅ 支持纯邮箱注册和纯手机号注册两种方式
+
+**相关文件：**
+- `backend/scripts/init_db.sql` - 建表脚本
+- `backend/internal/handler/auth_handler.go` - 修复日志记录参数顺序
+- `backend/internal/config/config.go` - 添加 Viper 配置类型设置
+- `example/lib/pages/auth/login_page.dart` - 开发环境默认勾选用户协议
+- `example/lib/pages/auth/register_page.dart` - 开发环境默认勾选用户协议
+
 #### 2026-04-29 - 修复注册页面 LoginType 类型错误
 **问题：** `type 'Null' is not a subtype of type 'LoginType' of 'function result'`
 
