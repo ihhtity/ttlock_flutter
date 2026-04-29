@@ -123,7 +123,7 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       debugPrint('🔑 ========== 开始登录流程 ==========');
-      debugPrint('   - 登录类型: ${widget.loginType == LoginType.admin ? "管理端" : "用户端"}');
+      debugPrint('   - 登录类型: ${(widget.loginType == LoginType.admin) ? "管理端" : "用户端"}');
       debugPrint('   - 手机号: ${_phoneController.text.trim()}');
       
       // 调用后端 API 登录
