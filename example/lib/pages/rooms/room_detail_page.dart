@@ -236,7 +236,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   }
 
   /// 检查锁数据是否有效
-  bool _checkLockData() {
+  Future<bool> _checkLockData() async {
     if (_lockData == null || _lockData!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -246,12 +246,39 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       );
       return false;
     }
-    return true;
+    
+    // 检查蓝牙状态
+    return await _checkBluetoothState();
+  }
+  
+  /// 检查蓝牙状态
+  Future<bool> _checkBluetoothState() async {
+    try {
+      TTLock.getBluetoothState((state) {
+        if (state != TTBluetoothState.turnOn) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('请先开启蓝牙功能'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      });
+      return true;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('蓝牙检查失败'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return false;
+    }
   }
 
   /// 蓝牙开锁
   Future<void> _unlock() async {
-    if (!_checkLockData()) return;
+    if (!await _checkLockData()) return;
 
     _showLoading('正在开锁...');
     print('正在开锁中...');
@@ -278,7 +305,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   /// 获取电池电量
   Future<void> _getBatteryLevel() async {
-    if (!_checkLockData()) return;
+    if (!await _checkLockData()) return;
 
     _showLoading('正在获取电量...');
 
@@ -299,7 +326,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   /// 获取操作记录
   Future<void> _getOperateRecord() async {
-    if (!_checkLockData()) return;
+    if (!await _checkLockData()) return;
 
     _showLoading('正在获取记录...');
 
@@ -411,7 +438,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   /// 添加密码
   Future<void> _addPasscode(String passcode) async {
-    if (!_checkLockData()) return;
+    if (!await _checkLockData()) return;
 
     _showLoading('正在添加密码...');
 
@@ -488,7 +515,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   /// 修改密码
   Future<void> _modifyPasscode(String oldPasscode, String newPasscode) async {
-    if (!_checkLockData()) return;
+    if (!await _checkLockData()) return;
 
     _showLoading('正在修改密码...');
 
@@ -555,7 +582,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   /// 删除密码
   Future<void> _deletePasscode(String passcode) async {
-    if (!_checkLockData()) return;
+    if (!await _checkLockData()) return;
 
     _showLoading('正在删除密码...');
 
@@ -616,7 +643,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   /// 添加卡片
   Future<void> _addCard() async {
-    if (!_checkLockData()) return;
+    if (!await _checkLockData()) return;
 
     _showLoading('请刷卡...');
 
@@ -646,7 +673,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   /// 清除所有卡片
   Future<void> _clearAllCards() async {
-    if (!_checkLockData()) return;
+    if (!await _checkLockData()) return;
 
     _showLoading('正在清除...');
 
@@ -734,32 +761,32 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
         children: [
           // 顶部房间信息区域
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // 左侧：房间号大图标
                 Container(
-                  width: 72,
-                  height: 72,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(14),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
                       ),
                     ],
                   ),
                   child: Icon(
                     Icons.meeting_room_rounded,
                     color: room['color'],
-                    size: 40,
+                    size: 32,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
 
                 // 中间：房间名称和类型
                 Expanded(
@@ -769,22 +796,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                       Text(
                         room['name'],
                         style: const TextStyle(
-                          fontSize: 32,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
-                          letterSpacing: 1.5,
-                          height: 1.2,
+                          letterSpacing: 1.0,
+                          height: 1.1,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 6,
+                          horizontal: 10,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.25),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: Colors.white.withOpacity(0.3),
                             width: 1,
@@ -796,13 +823,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                             const Icon(
                               Icons.hotel_rounded,
                               color: Colors.white,
-                              size: 16,
+                              size: 12,
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Text(
                               room['type'],
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 12,
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -817,16 +844,16 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                 // 右侧：房态标签
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+                    horizontal: 10,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 8,
+                        color: Colors.black.withOpacity(0.12),
+                        blurRadius: 6,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -835,18 +862,18 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 8,
-                        height: 8,
+                        width: 6,
+                        height: 6,
                         decoration: BoxDecoration(
                           color: room['color'],
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 5),
                       Text(
                         _getRoomStatusText(room['status']),
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: room['color'],
                         ),
@@ -860,11 +887,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
           // 底部信息统计条
           Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: Colors.white.withOpacity(0.2),
                 width: 1,
@@ -877,14 +904,14 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                     '楼栋', room['building'] ?? '未设置', Icons.apartment_rounded),
                 Container(
                   width: 1,
-                  height: 40,
+                  height: 28,
                   color: Colors.white.withOpacity(0.2),
                 ),
                 _buildInfoStatItem(
                     '楼层', '${room['floor'] ?? 0}层', Icons.layers_rounded),
                 Container(
                   width: 1,
-                  height: 40,
+                  height: 28,
                   color: Colors.white.withOpacity(0.2),
                 ),
                 _buildInfoStatItem(
@@ -906,13 +933,13 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           Icon(
             icon,
             color: Colors.white.withOpacity(0.9),
-            size: 20,
+            size: 16,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 3),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -921,7 +948,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 9,
               color: Colors.white.withOpacity(0.7),
               fontWeight: FontWeight.w500,
             ),
@@ -1039,11 +1066,11 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 8, bottom: 8),
+          padding: const EdgeInsets.only(left: 8, bottom: 6),
           child: Text(
             title,
             style: const TextStyle(
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppTheme.textSecondary,
             ),
@@ -1053,9 +1080,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 4,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          childAspectRatio: 0.85,
+          mainAxisSpacing: 6,
+          crossAxisSpacing: 6,
+          childAspectRatio: 0.95,
           children: buttons.map((btn) {
             return _buildActionButton(
               btn['icon']!,
@@ -1070,9 +1097,9 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   Widget _buildActionButton(IconData icon, String label, VoidCallback? action) {
     return Card(
-      elevation: 1,
+      elevation: 0.5,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: InkWell(
         onTap: action != null
@@ -1085,22 +1112,22 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
                   ),
                 );
               },
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         child: Padding(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(6),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
-                size: 24,
+                size: 22,
                 color: AppTheme.primaryColor,
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 11,
+                  fontSize: 10,
                   color: AppTheme.textPrimary,
                 ),
                 textAlign: TextAlign.center,

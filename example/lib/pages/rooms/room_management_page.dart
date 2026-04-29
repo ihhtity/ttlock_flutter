@@ -17,7 +17,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedStatus = 'all'; // all, vacant, rented, maintenance
   bool _isSearching = false; // 是否显示搜索框
-  
+
   // 模拟房间数据
   final List<Map<String, dynamic>> _allRooms = [
     {
@@ -98,7 +98,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
       'type': '豪华套房',
       'status': 'rented',
       'battery': 88,
-      'devices': ['lock', 'light', 'ac', 'tv', 'minibar'],
+      'devices': ['lock', 'light', 'ac', 'tv'],
       'icon': Icons.diamond_rounded,
       'color': AppTheme.primaryColor,
       'building': 'B栋',
@@ -117,35 +117,36 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
       'floor': 3,
     },
   ];
-  
+
   List<Map<String, dynamic>> get _rooms {
     var filtered = _allRooms;
-    
+
     // 按房态筛选
     if (_selectedStatus != 'all') {
-      filtered = filtered.where((room) => room['status'] == _selectedStatus).toList();
+      filtered =
+          filtered.where((room) => room['status'] == _selectedStatus).toList();
     }
-    
+
     // 按房间名字模糊查询
     if (_searchController.text.isNotEmpty) {
       filtered = filtered.where((room) {
         return room['name'].toString().toLowerCase().contains(
-          _searchController.text.toLowerCase(),
-        );
+              _searchController.text.toLowerCase(),
+            );
       }).toList();
     }
-    
+
     return filtered;
   }
 
   int _selectedIndex = 0;
-  
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
-  
+
   /// 刷新房间列表
   Future<void> _refreshRooms() async {
     // TODO: 实际刷新逻辑 - 从服务器获取最新数据
@@ -255,7 +256,6 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
     return AppTheme.errorColor;
   }
 
-
   /// 显示房间选项
   void _showRoomOptions(Map<String, dynamic> room) {
     showModalBottomSheet(
@@ -271,7 +271,8 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: const Icon(Icons.edit_rounded, color: AppTheme.primaryColor),
+                leading: const Icon(Icons.edit_rounded,
+                    color: AppTheme.primaryColor),
                 title: const Text('编辑房间'),
                 onTap: () {
                   Navigator.pop(context);
@@ -279,7 +280,8 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.devices_rounded, color: AppTheme.primaryColor),
+                leading: const Icon(Icons.devices_rounded,
+                    color: AppTheme.primaryColor),
                 title: const Text('查看设备'),
                 onTap: () {
                   Navigator.pop(context);
@@ -287,7 +289,8 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.settings_rounded, color: AppTheme.primaryColor),
+                leading: const Icon(Icons.settings_rounded,
+                    color: AppTheme.primaryColor),
                 title: const Text('房间设置'),
                 onTap: () {
                   Navigator.pop(context);
@@ -296,8 +299,10 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               ),
               const Divider(),
               ListTile(
-                leading: const Icon(Icons.delete_rounded, color: AppTheme.errorColor),
-                title: const Text('删除房间', style: TextStyle(color: AppTheme.errorColor)),
+                leading: const Icon(Icons.delete_rounded,
+                    color: AppTheme.errorColor),
+                title: const Text('删除房间',
+                    style: TextStyle(color: AppTheme.errorColor)),
                 onTap: () {
                   Navigator.pop(context);
                   _confirmDeleteRoom(room);
@@ -353,8 +358,9 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
     final l10n = AppLocalizations.of(context);
     final vacantCount = _allRooms.where((r) => r['status'] == 'vacant').length;
     final rentedCount = _allRooms.where((r) => r['status'] == 'rented').length;
-    final maintenanceCount = _allRooms.where((r) => r['status'] == 'maintenance').length;
-    
+    final maintenanceCount =
+        _allRooms.where((r) => r['status'] == 'maintenance').length;
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -513,7 +519,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               ],
             ),
           ),
-          
+
           // 房间网格列表 - 一行4个，可上下滑动
           Expanded(
             child: _rooms.isEmpty
@@ -549,7 +555,8 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                       ),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 4, // 一行4个
                         crossAxisSpacing: 6,
                         mainAxisSpacing: 6,
@@ -573,7 +580,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
           setState(() {
             _selectedIndex = index;
           });
-          
+
           if (index == 1) {
             // 切换到个人中心
             Navigator.push(
@@ -638,7 +645,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 4),
-            
+
             // 房间类型
             Text(
               room['type'],
@@ -652,7 +659,7 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 6),
-            
+
             // 电量显示
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -674,19 +681,22 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               ],
             ),
             const SizedBox(height: 5),
-            
+
             // 设备图标列表
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 3,
-              runSpacing: 3,
-              children: (room['devices'] as List<String>).map((device) {
-                return Icon(
-                  _getDeviceIcon(device),
-                  size: 12,
-                  color: AppTheme.textHint,
-                );
-              }).toList(),
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 2,
+                runSpacing: 2,
+                children: (room['devices'] as List<String>).map((device) {
+                  return Icon(
+                    _getDeviceIcon(device),
+                    size: 11,
+                    color: AppTheme.textHint,
+                  );
+                }).toList(),
+              ),
             ),
           ],
         ),
@@ -725,7 +735,8 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               dense: true,
             ),
             ListTile(
-              leading: Icon(Icons.diamond_rounded, color: AppTheme.primaryColor),
+              leading:
+                  Icon(Icons.diamond_rounded, color: AppTheme.primaryColor),
               title: Text('豪华套房'),
               dense: true,
             ),
@@ -826,9 +837,8 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               label,
               style: TextStyle(
                 fontSize: 11,
-                color: isSelected
-                    ? Colors.white
-                    : Colors.white.withOpacity(0.7),
+                color:
+                    isSelected ? Colors.white : Colors.white.withOpacity(0.7),
                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
               ),
             ),
