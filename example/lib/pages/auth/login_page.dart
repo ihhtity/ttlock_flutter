@@ -32,7 +32,7 @@ class _LoginPageState extends State<LoginPage> {
   
   final CountrySelectionManager _countryManager = CountrySelectionManager();
   bool _obscurePassword = true;
-  bool _agreeToTerms = false;
+  bool _agreeToTerms = true; // 开发环境默认勾选，方便测试
   bool _isLoading = false;
 
   @override

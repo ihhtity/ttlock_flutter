@@ -40,7 +40,7 @@ class _RegisterPageState extends State<RegisterPage> {
   RegisterMethod _registerMethod = RegisterMethod.phone;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _agreeToTerms = false;
+  bool _agreeToTerms = true; // 开发环境默认勾选，方便测试
   bool _isLoading = false;
   int _countdown = 0;
 
