@@ -87,6 +87,7 @@ test_api.bat
 
 **修复：**
 - ✅ `register_page.dart` - 为 `widget.loginType` 的三元运算添加括号，确保类型安全
+- ✅ `login_page.dart` - 同样修复登录页面的调试日志中的三元运算符
 - ✅ 修改前：`${widget.loginType == LoginType.admin ? 1 : 0}`
 - ✅ 修改后：`${(widget.loginType == LoginType.admin) ? 1 : 0}`
 
