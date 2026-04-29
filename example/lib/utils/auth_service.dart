@@ -129,6 +129,7 @@ class AuthService {
     required String nickname,
     required int adminsId,
     required bool agreeTerms,
+    int registerType = 2, // 1-管理端注册，2-用户端注册（默认）
     String country = 'CN',
     String dialCode = '+86',
   }) async {
@@ -144,6 +145,7 @@ class AuthService {
         'dial_code': dialCode,
         'phone_bound': phone.isNotEmpty ? 1 : 0,
         'email_bound': (email != null && email.isNotEmpty) ? 1 : 0,
+        'register_type': registerType, // 注册类型：1-管理端，2-用户端
       };
 
       debugPrint('📝 开始注册请求');

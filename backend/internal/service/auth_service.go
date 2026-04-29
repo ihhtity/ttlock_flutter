@@ -140,8 +140,69 @@ func (s *AuthService) loginClient(user *model.Client, password string) (*model.L
 	}, nil
 }
 
-// Register 用户注册
+// Register 用户注册（支持管理端和用户端）
 func (s *AuthService) Register(req *model.RegisterRequest) error {
+	// 检查手机号和邮箱是否都不提供
+	if (req.Phone == nil || *req.Phone == "") && (req.Email == nil || *req.Email == "") {
+		return errors.New("手机号或邮箱必须提供一个")
+	}
+	
+	// 根据注册类型进行不同的处理
+	if req.RegisterType == 1 {
+		// 管理端注册 - 写入 admins 表
+		return s.registerAdmin(req)
+	} else {
+		// 用户端注册 - 写入 clients 表（默认）
+		return s.registerClient(req)
+	}
+}
+
+// registerAdmin 管理端注册
+func (s *AuthService) registerAdmin(req *model.RegisterRequest) error {
+	// 检查手机号或邮箱是否已存在
+	if req.Phone != nil && *req.Phone != "" {
+		existAdmin, _ := s.adminRepo.FindByPhone(*req.Phone)
+		if existAdmin != nil {
+			return errors.New("手机号已注册")
+		}
+	}
+	
+	if req.Email != nil && *req.Email != "" {
+		existAdmin, _ := s.adminRepo.FindByEmail(*req.Email)
+		if existAdmin != nil {
+			return errors.New("邮箱已注册")
+		}
+	}
+	
+	// 用户名使用手机号或邮箱
+	username := ""
+	if req.Phone != nil && *req.Phone != "" {
+		username = *req.Phone
+	} else if req.Email != nil && *req.Email != "" {
+		username = *req.Email
+	}
+	
+	// 创建管理员
+	admin := &model.Admin{
+		Username:   username,
+		Email:      req.Email,
+		Phone:      req.Phone,
+		RealName:   req.Nickname,
+		AgreeTerms: req.AgreeTerms,
+		Status:     1,
+	}
+	
+	if err := s.adminRepo.Create(admin, req.Password); err != nil {
+		logger.Error("创建管理员失败", err)
+		return errors.New("注册失败")
+	}
+	
+	logger.Info("管理员注册成功", zap.String("username", username))
+	return nil
+}
+
+// registerClient 用户端注册
+func (s *AuthService) registerClient(req *model.RegisterRequest) error {
 	// 检查手机号和邮箱是否都不提供
 	if (req.Phone == nil || *req.Phone == "") && (req.Email == nil || *req.Email == "") {
 		return errors.New("手机号或邮箱必须提供一个")

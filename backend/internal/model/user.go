@@ -52,16 +52,17 @@ type LoginRequest struct {
 
 // RegisterRequest 注册请求
 type RegisterRequest struct {
-	Phone      *string `json:"phone"`
-	Email      *string `json:"email"`
-	Password   string  `json:"password" binding:"required,min=8,max=20"`
-	Nickname   string  `json:"nickname"`
-	AdminsID   int     `json:"admins_id" binding:"required"`
-	AgreeTerms int     `json:"agree_terms" binding:"oneof=0 1"`
-	Country    string  `json:"country"`
-	DialCode   string  `json:"dial_code"`
-	PhoneBound int     `json:"phone_bound"`
-	EmailBound int     `json:"email_bound"`
+	Phone       *string `json:"phone"`
+	Email       *string `json:"email"`
+	Password    string  `json:"password" binding:"required,min=8,max=20"`
+	Nickname    string  `json:"nickname"`
+	AdminsID    int     `json:"admins_id"`
+	AgreeTerms  int     `json:"agree_terms" binding:"oneof=0 1"`
+	Country     string  `json:"country"`
+	DialCode    string  `json:"dial_code"`
+	PhoneBound  int     `json:"phone_bound"`
+	EmailBound  int     `json:"email_bound"`
+	RegisterType int    `json:"register_type"` // 1-管理端注册，2-用户端注册
 }
 
 // LoginResponse 登录响应

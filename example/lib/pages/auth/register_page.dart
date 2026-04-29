@@ -325,6 +325,7 @@ class _RegisterPageState extends State<RegisterPage> {
             : _emailController.text.trim(),
         adminsId: (widget.loginType == LoginType.admin) ? 1 : 0, // 管理端需要 adminsId，用户端可以为 0
         agreeTerms: _agreeToTerms,
+        registerType: widget.loginType == LoginType.admin ? 1 : 2, // 1-管理端注册，2-用户端注册
         country: _countryManager.selectedCountry.code,
         dialCode: _countryManager.selectedCountry.dialCode,
       );
