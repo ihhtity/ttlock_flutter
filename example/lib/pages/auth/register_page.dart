@@ -278,7 +278,8 @@ class _RegisterPageState extends State<RegisterPage> {
       debugPrint('   - 注册方式: ${_registerMethod == RegisterMethod.phone ? "手机号" : "邮箱"}');
       debugPrint('   - Phone: ${_registerMethod == RegisterMethod.phone ? _phoneController.text.trim() : "null"}');
       debugPrint('   - Email: ${_registerMethod == RegisterMethod.email ? _emailController.text.trim() : "null"}');
-      debugPrint('   - AdminsID: ${widget.loginType == LoginType.admin ? 1 : 0}');
+      debugPrint('   - LoginType: ${widget.loginType}');
+      debugPrint('   - AdminsID: ${(widget.loginType == LoginType.admin) ? 1 : 0}');
       
       // 第一步：验证验证码
       debugPrint('🔍 步骤1: 验证验证码...');
@@ -322,9 +323,7 @@ class _RegisterPageState extends State<RegisterPage> {
         nickname: _registerMethod == RegisterMethod.phone
             ? _phoneController.text.trim()
             : _emailController.text.trim(),
-        adminsId: widget.loginType == LoginType.admin
-            ? 1
-            : 0, // 管理端需要 adminsId，用户端可以为 0
+        adminsId: (widget.loginType == LoginType.admin) ? 1 : 0, // 管理端需要 adminsId，用户端可以为 0
         agreeTerms: _agreeToTerms,
         country: _countryManager.selectedCountry.code,
         dialCode: _countryManager.selectedCountry.dialCode,

@@ -30,7 +30,7 @@ func (s *AuthService) Login(phone, email, password string) (*model.LoginResponse
 		admin, err := s.adminRepo.FindByUsername(phone)
 		if err != nil {
 			logger.Error("查询管理员失败", err, zap.String("username", phone))
-			return nil, errors.New("服务器错误!")
+			return nil, errors.New("服务器错误")
 		}
 
 		if admin != nil {
