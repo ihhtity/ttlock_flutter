@@ -28,7 +28,7 @@ DROP TABLE IF EXISTS `clients`;
 CREATE TABLE `clients` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `admins_id` int(11) NOT NULL COMMENT '所属管理员ID',
-  `phone` varchar(20) NOT NULL COMMENT '手机号',
+  `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
   `email` varchar(100) DEFAULT NULL COMMENT '邮箱',
   `password` varchar(255) NOT NULL COMMENT '密码',
   `nickname` varchar(50) DEFAULT NULL COMMENT '昵称',

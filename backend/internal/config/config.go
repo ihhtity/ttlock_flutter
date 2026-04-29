@@ -107,6 +107,7 @@ var GlobalConfig *Config
 // LoadConfig 加载配置文件
 func LoadConfig(path string) (*Config, error) {
 	viper.SetConfigFile(path)
+	viper.SetConfigType("yaml") // 显式设置配置类型
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {

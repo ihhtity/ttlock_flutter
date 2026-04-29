@@ -49,10 +49,9 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	result, err := h.authService.Login(phone, email, req.Password)
 	if err != nil {
-		logger.Error("登录失败", 
-			zap.String("phone", phone), 
-			zap.String("email", email), 
-			zap.Error(err))
+		logger.Error("登录失败", err,
+			zap.String("phone", phone),
+			zap.String("email", email))
 		response.Unauthorized(c, err.Error())
 		return
 	}
@@ -88,10 +87,9 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		zap.String("nickname", req.Nickname))
 
 	if err := h.authService.Register(&req); err != nil {
-		logger.Error("注册失败",
+		logger.Error("注册失败", err,
 			zap.String("phone", phone),
-			zap.String("email", email),
-			zap.Error(err))
+			zap.String("email", email))
 		response.BadRequest(c, err.Error())
 		return
 	}
@@ -111,26 +109,19 @@ func (h *AuthHandler) SendVerificationCode(c *gin.Context) {
 		return
 	}
 
-	phone := ""
-	if req.Phone != nil {
-		phone = *req.Phone
-	}
-	email := ""
-	if req.Email != nil {
-		email = *req.Email
-	}
+	phone := req.Phone
+	email := req.Email
 
 	logger.Info("收到发送验证码请求",
 		zap.String("phone", phone),
 		zap.String("email", email),
 		zap.Int("type", req.Type))
 
-	if err := h.verificationService.SendCode(req.Phone, req.Email, req.Type); err != nil {
-		logger.Error("发送验证码失败",
+	if err := h.verificationService.SendCode(phone, email, req.Type); err != nil {
+		logger.Error("发送验证码失败", err,
 			zap.String("phone", phone),
 			zap.String("email", email),
-			zap.Int("type", req.Type),
-			zap.Error(err))
+			zap.Int("type", req.Type))
 		response.BadRequest(c, err.Error())
 		return
 	}
@@ -150,14 +141,8 @@ func (h *AuthHandler) VerifyCode(c *gin.Context) {
 		return
 	}
 
-	phone := ""
-	if req.Phone != nil {
-		phone = *req.Phone
-	}
-	email := ""
-	if req.Email != nil {
-		email = *req.Email
-	}
+	phone := req.Phone
+	email := req.Email
 
 	logger.Info("收到验证验证码请求",
 		zap.String("phone", phone),
@@ -165,13 +150,12 @@ func (h *AuthHandler) VerifyCode(c *gin.Context) {
 		zap.String("code", req.Code),
 		zap.Int("type", req.Type))
 
-	if err := h.verificationService.VerifyCode(req.Phone, req.Email, req.Code, req.Type); err != nil {
-		logger.Error("验证验证码失败",
+	if err := h.verificationService.VerifyCode(phone, email, req.Code, req.Type); err != nil {
+		logger.Error("验证验证码失败", err,
 			zap.String("phone", phone),
 			zap.String("email", email),
 			zap.String("code", req.Code),
-			zap.Int("type", req.Type),
-			zap.Error(err))
+			zap.Int("type", req.Type))
 		response.BadRequest(c, err.Error())
 		return
 	}
@@ -191,24 +175,17 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	phone := ""
-	if req.Phone != nil {
-		phone = *req.Phone
-	}
-	email := ""
-	if req.Email != nil {
-		email = *req.Email
-	}
+	phone := req.Phone
+	email := req.Email
 
 	logger.Info("收到重置密码请求",
 		zap.String("phone", phone),
 		zap.String("email", email))
 
-	if err := h.verificationService.ResetPassword(req.Phone, req.Email, req.Code, req.NewPassword); err != nil {
-		logger.Error("重置密码失败",
+	if err := h.verificationService.ResetPassword(phone, email, req.Code, req.NewPassword); err != nil {
+		logger.Error("重置密码失败", err,
 			zap.String("phone", phone),
-			zap.String("email", email),
-			zap.Error(err))
+			zap.String("email", email))
 		response.BadRequest(c, err.Error())
 		return
 	}
