@@ -109,6 +109,9 @@ class KoTranslations {
     'powerMonitor': '전력 모니터',
     'accessControl': '출입 통제',
     'usageTracker': '사용량 추적기',
+    
+    // 방 관리
+    'roomManagement': '방 관리',
 
     // 스캔 페이지
     'searchingDevices': '기기 검색 중...',

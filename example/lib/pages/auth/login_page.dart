@@ -4,6 +4,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/country_model.dart';
 import '../../theme.dart';
 import '../../utils/country_selection_manager.dart';
+import '../../utils/auth_service.dart';
 // import '../../utils/local_json_storage.dart';  // 已移除，使用内存存储
 import 'country_selector_page.dart';
 import 'register_page.dart';
@@ -115,28 +116,54 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    // TODO: 实现实际的登录逻辑
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() => _isLoading = false);
-
-    if (mounted) {
-      // 保存用户协议同意状态（持久化）
-      // await LocalJsonStorage.updateSetting('agree_to_terms', _agreeToTerms);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).loginSuccess),
-          backgroundColor: AppTheme.successColor,
-        ),
+    try {
+      // 调用后端 API 登录
+      final response = await AuthService.login(
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text,
       );
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (response.isSuccess) {
+        // 保存用户协议同意状态（持久化）
+        // await LocalJsonStorage.updateSetting('agree_to_terms', _agreeToTerms);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).loginSuccess),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+        
+        // 登录成功后跳转到设备管理页面
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const RoomManagementPage(),
+          ),
+        );
+      } else {
+        // 显示错误信息
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
       
-      // 登录成功后跳转到设备管理页面
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const RoomManagementPage(),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('登录失败: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
     }
   }
 

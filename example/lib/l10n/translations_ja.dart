@@ -109,6 +109,9 @@ class JaTranslations {
     'powerMonitor': '電力モニター',
     'accessControl': 'アクセス制御',
     'usageTracker': '使用量トラッカー',
+    
+    // 部屋管理
+    'roomManagement': '部屋管理',
 
     // スキャンページ
     'searchingDevices': 'デバイスを検索中...',

@@ -4,6 +4,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/country_model.dart';
 import '../../theme.dart';
 import '../../utils/country_selection_manager.dart';
+import '../../utils/auth_service.dart';
 import 'country_selector_page.dart';
 import 'terms_pages.dart';
 
@@ -185,19 +186,47 @@ class _RegisterPageState extends State<RegisterPage> {
 
     setState(() => _isLoading = true);
 
-    // TODO: 实现实际的注册逻辑
-    await Future.delayed(const Duration(seconds: 2));
-
-    setState(() => _isLoading = false);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).registerSuccess),
-          backgroundColor: AppTheme.successColor,
-        ),
+    try {
+      // 调用后端 API 注册
+      final response = await AuthService.register(
+        phone: _phoneController.text.trim(),
+        password: _passwordController.text,
+        nickname: _phoneController.text.trim(), // 使用手机号作为昵称
+        adminsId: 1, // TODO: 从配置或用户选择中获取
+        agreeTerms: _agreeToTerms,
       );
-      Navigator.pop(context);
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (response.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(AppLocalizations.of(context).registerSuccess),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('注册失败: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
     }
   }
 

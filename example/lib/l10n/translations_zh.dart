@@ -109,6 +109,9 @@ class ZhTranslations {
     'powerMonitor': '电力监控',
     'accessControl': '门禁控制',
     'usageTracker': '用量追踪',
+    
+    // 房间管理
+    'roomManagement': '房间管理',
 
     // 扫描页
     'searchingDevices': '正在搜索设备...',

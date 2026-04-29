@@ -109,6 +109,9 @@ class FrTranslations {
     'powerMonitor': 'Moniteur d\'alimentation',
     'accessControl': 'Contrôle d\'accès',
     'usageTracker': 'Suivi d\'utilisation',
+    
+    // Gestion des chambres
+    'roomManagement': 'Gestion des chambres',
 
     // Page de numérisation
     'searchingDevices': 'Recherche d\'appareils...',

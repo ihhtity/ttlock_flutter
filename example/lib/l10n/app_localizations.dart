@@ -144,6 +144,9 @@ class AppLocalizations {
   String get accessControl => translate('accessControl');
   String get waterMeter => translate('waterMeter');
   String get usageTracker => translate('usageTracker');
+  
+  // 房间管理
+  String get roomManagement => translate('roomManagement');
 
   // ==================== 扫描页面 ====================
   String get searchingDevices => translate('searchingDevices');

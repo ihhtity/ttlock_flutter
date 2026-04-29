@@ -109,6 +109,9 @@ class DeTranslations {
     'powerMonitor': 'Strommonitor',
     'accessControl': 'Zugangskontrolle',
     'usageTracker': 'Nutzungsverfolger',
+    
+    // Raumverwaltung
+    'roomManagement': 'Raumverwaltung',
 
     // Scan-Seite
     'searchingDevices': 'Geräte werden gesucht...',

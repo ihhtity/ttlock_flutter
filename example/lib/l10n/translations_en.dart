@@ -109,6 +109,9 @@ class EnTranslations {
     'powerMonitor': 'Power Monitor',
     'accessControl': 'Access Control',
     'usageTracker': 'Usage Tracker',
+    
+    // Room Management
+    'roomManagement': 'Room Management',
 
     // Scan Page
     'searchingDevices': 'Searching for devices...',

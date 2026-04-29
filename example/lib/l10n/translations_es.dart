@@ -109,6 +109,9 @@ class EsTranslations {
     'powerMonitor': 'Monitor de energía',
     'accessControl': 'Control de acceso',
     'usageTracker': 'Rastreador de uso',
+    
+    // Gestión de habitaciones
+    'roomManagement': 'Gestión de habitaciones',
 
     // Página de escaneo
     'searchingDevices': 'Buscando dispositivos...',

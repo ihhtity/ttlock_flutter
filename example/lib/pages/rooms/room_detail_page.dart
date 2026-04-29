@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ttlock_flutter/ttlock/ttlock.dart';
 import 'package:bmprogresshud/progresshud.dart';
 import '../../theme.dart';
+import '../../utils/device_room_service.dart';
 import '../../utils/ttlock_api_service.dart';
 
 /// 房间详情/编辑页面
@@ -12,9 +13,17 @@ import '../../utils/ttlock_api_service.dart';
 /// - 电源设备控制（通电、断电等）
 /// - 房间设置和设备绑定
 class RoomDetailPage extends StatefulWidget {
-  final Map<String, dynamic> room;
+  final Map<String, dynamic>? roomMap; // 旧的Map格式（兼容）
+  final RoomModel? roomModel; // 新的模型格式
 
-  const RoomDetailPage({Key? key, required this.room}) : super(key: key);
+  const RoomDetailPage({Key? key, this.roomMap, this.roomModel}) 
+    : assert(roomMap != null || roomModel != null, '必须提供 roomMap 或 roomModel'),
+      super(key: key);
+
+  /// 从 RoomModel 创建
+  factory RoomDetailPage.fromModel({required RoomModel room}) {
+    return RoomDetailPage(roomModel: room);
+  }
 
   @override
   _RoomDetailPageState createState() => _RoomDetailPageState();
@@ -25,13 +34,34 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
   String? _lockData; // 智能锁数据
   String? _lockMac; // 智能锁 MAC 地址
   bool _isLoading = false;
+  
+  // 获取房间数据（兼容旧版Map和新版Model）
+  Map<String, dynamic> get roomData {
+    if (widget.roomModel != null) {
+      // 从 RoomModel 转换
+      return {
+        'id': widget.roomModel!.id.toString(),
+        'name': widget.roomModel!.name,
+        'type': widget.roomModel!.type ?? '标准间',
+        'status': widget.roomModel!.status,
+        'battery': widget.roomModel!.battery,
+        'building': widget.roomModel!.building,
+        'floor': widget.roomModel!.floor,
+        'lockData': _lockData,
+        'lockMac': _lockMac,
+      };
+    } else {
+      // 使用旧的 Map 格式
+      return widget.roomMap!;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     // 从房间信息中获取锁数据（如果有）
-    _lockData = widget.room['lockData'];
-    _lockMac = widget.room['lockMac'];
+    _lockData = roomData['lockData'];
+    _lockMac = roomData['lockMac'];
 
     // 如果没有锁数据，尝试加载测试数据
     if (_lockData == null || _lockData!.isEmpty) {
@@ -694,7 +724,7 @@ class _RoomDetailPageState extends State<RoomDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final room = widget.room;
+    final room = roomData;
 
     return Scaffold(
       appBar: AppBar(
