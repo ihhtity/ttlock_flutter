@@ -80,6 +80,16 @@ test_api.bat
 
 ### 更新日志
 
+#### 2026-04-29 - 修复注册页面 LoginType 类型错误
+**问题：** `type 'Null' is not a subtype of type 'LoginType' of 'function result'`
+
+**原因：** Dart 三元运算符在字符串插值中可能产生类型推断问题
+
+**修复：**
+- ✅ `register_page.dart` - 为 `widget.loginType` 的三元运算添加括号，确保类型安全
+- ✅ 修改前：`${widget.loginType == LoginType.admin ? 1 : 0}`
+- ✅ 修改后：`${(widget.loginType == LoginType.admin) ? 1 : 0}`
+
 #### 2026-04-29 - 增强认证请求错误日志
 **前端修改：**
 - ✅ `auth_service.dart` - 为所有认证方法添加详细错误日志，包括请求参数、响应数据和堆栈信息
