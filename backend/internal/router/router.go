@@ -66,6 +66,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			authHandler := handler.NewAuthHandler()
 			auth.POST("/login", authHandler.Login)
 			auth.POST("/register", authHandler.Register)
+			auth.POST("/send-code", authHandler.SendVerificationCode)
+			auth.POST("/verify-code", authHandler.VerifyCode)
+			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
 		// 需要认证的接口

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
-import 'pages/auth/login_page.dart';
+import 'pages/auth/login_entry_page.dart';
 import 'ttlocktest/home_page.dart';
 import 'theme.dart';
 import 'utils/language_manager.dart';
@@ -59,7 +59,7 @@ class _MyAppState extends State<MyApp> {
         // 使用 LanguageManager 中设置的语言
         return _languageManager.currentLocale;
       },
-      home: const LoginPage(),
+      home: const LoginEntryPage(),
       debugShowCheckedModeBanner: false,
     );
   }

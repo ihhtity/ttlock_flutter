@@ -7,14 +7,16 @@ import (
 
 // Config 应用配置结构
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Cache    CacheConfig    `mapstructure:"cache"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Log      LogConfig      `mapstructure:"log"`
-	CORS     CORSConfig     `mapstructure:"cors"`
+	Server    ServerConfig    `mapstructure:"server"`
+	Database  DatabaseConfig  `mapstructure:"database"`
+	Redis     RedisConfig     `mapstructure:"redis"`
+	Cache     CacheConfig     `mapstructure:"cache"`
+	JWT       JWTConfig       `mapstructure:"jwt"`
+	Log       LogConfig       `mapstructure:"log"`
+	CORS      CORSConfig      `mapstructure:"cors"`
 	RateLimit RateLimitConfig `mapstructure:"rate_limit"`
+	SMS       SMSConfig       `mapstructure:"sms"`
+	Email     EmailConfig     `mapstructure:"email"`
 }
 
 // ServerConfig 服务器配置
@@ -74,9 +76,30 @@ type CORSConfig struct {
 
 // RateLimitConfig 限流配置
 type RateLimitConfig struct {
-	Enabled          bool    `mapstructure:"enabled"`
+	Enabled           bool    `mapstructure:"enabled"`
 	RequestsPerSecond float64 `mapstructure:"requests_per_second"`
-	BurstSize        int     `mapstructure:"burst_size"`
+	BurstSize         int     `mapstructure:"burst_size"`
+}
+
+// SMSConfig 短信配置
+type SMSConfig struct {
+	Enabled         bool   `mapstructure:"enabled"`
+	AccessKeyID     string `mapstructure:"access_key_id"`
+	AccessKeySecret string `mapstructure:"access_key_secret"`
+	SignName        string `mapstructure:"sign_name"`
+	TemplateCode    string `mapstructure:"template_code"`
+	RegionID        string `mapstructure:"region_id"`
+}
+
+// EmailConfig 邮件配置
+type EmailConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
+	FromName string `mapstructure:"from_name"`
+	UseTLS   bool   `mapstructure:"use_tls"`
 }
 
 var GlobalConfig *Config

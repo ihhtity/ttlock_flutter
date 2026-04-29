@@ -12,13 +12,15 @@ import (
 
 // AuthHandler 认证处理器
 type AuthHandler struct {
-	authService *service.AuthService
+	authService        *service.AuthService
+	verificationService *service.VerificationService
 }
 
 // NewAuthHandler 创建认证处理器
 func NewAuthHandler() *AuthHandler {
 	return &AuthHandler{
-		authService: service.NewAuthService(),
+		authService:        service.NewAuthService(),
+		verificationService: service.NewVerificationService(),
 	}
 }
 
@@ -26,18 +28,39 @@ func NewAuthHandler() *AuthHandler {
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("登录参数错误", zap.Error(err))
 		response.BadRequest(c, "参数错误: "+err.Error())
 		return
 	}
 
-	result, err := h.authService.Login(req.Phone, req.Password)
+	// 提取手机号和邮箱
+	phone := ""
+	if req.Phone != nil {
+		phone = *req.Phone
+	}
+	email := ""
+	if req.Email != nil {
+		email = *req.Email
+	}
+
+	logger.Info("收到登录请求", 
+		zap.String("phone", phone), 
+		zap.String("email", email))
+
+	result, err := h.authService.Login(phone, email, req.Password)
 	if err != nil {
-		logger.Warn("登录失败", zap.String("phone", req.Phone), zap.Error(err))
+		logger.Error("登录失败", 
+			zap.String("phone", phone), 
+			zap.String("email", email), 
+			zap.Error(err))
 		response.Unauthorized(c, err.Error())
 		return
 	}
 
-	logger.Info("用户登录成功", zap.Int("user_id", result.User.ID))
+	logger.Info("用户登录成功", 
+		zap.Int("user_id", result.User.ID),
+		zap.String("phone", phone),
+		zap.String("email", email))
 	response.Success(c, result)
 }
 
@@ -45,16 +68,153 @@ func (h *AuthHandler) Login(c *gin.Context) {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("注册参数错误", zap.Error(err))
 		response.BadRequest(c, "参数错误: "+err.Error())
 		return
 	}
 
+	phone := ""
+	if req.Phone != nil {
+		phone = *req.Phone
+	}
+	email := ""
+	if req.Email != nil {
+		email = *req.Email
+	}
+
+	logger.Info("收到注册请求",
+		zap.String("phone", phone),
+		zap.String("email", email),
+		zap.String("nickname", req.Nickname))
+
 	if err := h.authService.Register(&req); err != nil {
-		logger.Warn("注册失败", zap.String("phone", req.Phone), zap.Error(err))
+		logger.Error("注册失败",
+			zap.String("phone", phone),
+			zap.String("email", email),
+			zap.Error(err))
 		response.BadRequest(c, err.Error())
 		return
 	}
 
-	logger.Info("用户注册成功", zap.String("phone", req.Phone))
+	logger.Info("用户注册成功",
+		zap.String("phone", phone),
+		zap.String("email", email))
 	response.SuccessWithMessage(c, "注册成功", nil)
+}
+
+// SendVerificationCode 发送验证码
+func (h *AuthHandler) SendVerificationCode(c *gin.Context) {
+	var req model.SendVerificationCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("发送验证码参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	phone := ""
+	if req.Phone != nil {
+		phone = *req.Phone
+	}
+	email := ""
+	if req.Email != nil {
+		email = *req.Email
+	}
+
+	logger.Info("收到发送验证码请求",
+		zap.String("phone", phone),
+		zap.String("email", email),
+		zap.Int("type", req.Type))
+
+	if err := h.verificationService.SendCode(req.Phone, req.Email, req.Type); err != nil {
+		logger.Error("发送验证码失败",
+			zap.String("phone", phone),
+			zap.String("email", email),
+			zap.Int("type", req.Type),
+			zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	logger.Info("验证码发送成功",
+		zap.String("phone", phone),
+		zap.String("email", email))
+	response.SuccessWithMessage(c, "验证码已发送", nil)
+}
+
+// VerifyCode 验证验证码
+func (h *AuthHandler) VerifyCode(c *gin.Context) {
+	var req model.VerifyCodeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("验证验证码参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	phone := ""
+	if req.Phone != nil {
+		phone = *req.Phone
+	}
+	email := ""
+	if req.Email != nil {
+		email = *req.Email
+	}
+
+	logger.Info("收到验证验证码请求",
+		zap.String("phone", phone),
+		zap.String("email", email),
+		zap.String("code", req.Code),
+		zap.Int("type", req.Type))
+
+	if err := h.verificationService.VerifyCode(req.Phone, req.Email, req.Code, req.Type); err != nil {
+		logger.Error("验证验证码失败",
+			zap.String("phone", phone),
+			zap.String("email", email),
+			zap.String("code", req.Code),
+			zap.Int("type", req.Type),
+			zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	logger.Info("验证码验证成功",
+		zap.String("phone", phone),
+		zap.String("email", email))
+	response.SuccessWithMessage(c, "验证成功", nil)
+}
+
+// ResetPassword 重置密码
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req model.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("重置密码参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	phone := ""
+	if req.Phone != nil {
+		phone = *req.Phone
+	}
+	email := ""
+	if req.Email != nil {
+		email = *req.Email
+	}
+
+	logger.Info("收到重置密码请求",
+		zap.String("phone", phone),
+		zap.String("email", email))
+
+	if err := h.verificationService.ResetPassword(req.Phone, req.Email, req.Code, req.NewPassword); err != nil {
+		logger.Error("重置密码失败",
+			zap.String("phone", phone),
+			zap.String("email", email),
+			zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	logger.Info("密码重置成功",
+		zap.String("phone", phone),
+		zap.String("email", email))
+	response.SuccessWithMessage(c, "密码重置成功", nil)
 }

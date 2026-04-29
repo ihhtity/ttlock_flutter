@@ -5,18 +5,24 @@ import '../../models/country_model.dart';
 import '../../theme.dart';
 import '../../utils/country_selection_manager.dart';
 import '../../utils/auth_service.dart';
+import '../../utils/local_cache.dart';
 import 'country_selector_page.dart';
 import 'terms_pages.dart';
 
 /// 注册方式枚举
 enum RegisterMethod {
-  phone,  // 手机号注册
-  email,  // 邮箱注册
+  phone, // 手机号注册
+  email, // 邮箱注册
 }
 
 /// 注册页面
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({Key? key}) : super(key: key);
+  final LoginType loginType;
+
+  const RegisterPage({
+    Key? key,
+    this.loginType = LoginType.client, // 默认用户端
+  }) : super(key: key);
 
   @override
   _RegisterPageState createState() => _RegisterPageState();
@@ -29,7 +35,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _verificationCodeController = TextEditingController();
-  
+
   final CountrySelectionManager _countryManager = CountrySelectionManager();
   RegisterMethod _registerMethod = RegisterMethod.phone;
   bool _obscurePassword = true;
@@ -43,6 +49,23 @@ class _RegisterPageState extends State<RegisterPage> {
     super.initState();
     // 监听国家选择变化
     _countryManager.addListener(_onCountryChanged);
+
+    // 加载用户协议同意状态（持久化）
+    _loadAgreementStatus();
+  }
+
+  /// 加载用户协议同意状态（持久化）
+  Future<void> _loadAgreementStatus() async {
+    try {
+      final agreed = LocalCache.getAgreeTermsStatus();
+      if (mounted) {
+        setState(() {
+          _agreeToTerms = agreed;
+        });
+      }
+    } catch (e) {
+      print('加载协议状态失败: $e');
+    }
   }
 
   @override
@@ -73,34 +96,34 @@ class _RegisterPageState extends State<RegisterPage> {
   /// 要求：8-20位，至少包含数字/字母/符号中的两位
   String? _validatePassword(String? value) {
     final l10n = AppLocalizations.of(context);
-    
+
     if (value == null || value.isEmpty) {
       return l10n.pleaseEnterPassword;
     }
-    
+
     // 检查长度
     if (value.length < 8 || value.length > 20) {
       return l10n.passwordLengthError;
     }
-    
+
     // 检查是否包含数字
     bool hasDigit = RegExp(r'\d').hasMatch(value);
     // 检查是否包含字母
     bool hasLetter = RegExp(r'[a-zA-Z]').hasMatch(value);
     // 检查是否包含符号
     bool hasSymbol = RegExp(r"[^\w\s]").hasMatch(value);
-    
+
     // 统计包含的字符类型数量
     int typeCount = 0;
     if (hasDigit) typeCount++;
     if (hasLetter) typeCount++;
     if (hasSymbol) typeCount++;
-    
+
     // 至少需要包含两种类型
     if (typeCount < 2) {
       return l10n.passwordComplexityError;
     }
-    
+
     return null;
   }
 
@@ -127,7 +150,7 @@ class _RegisterPageState extends State<RegisterPage> {
         );
         return;
       }
-      
+
       if (!_isValidEmail(_emailController.text)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -140,30 +163,83 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     setState(() => _isLoading = true);
-    
-    // TODO: 实现发送验证码逻辑
-    await Future.delayed(const Duration(seconds: 1));
-    
-    setState(() {
-      _isLoading = false;
-      _countdown = 60;
-    });
-    
-    // 倒计时
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (_countdown > 0 && mounted) {
-        setState(() => _countdown--);
-        return true;
+
+    try {
+      debugPrint('📧 ========== 开始发送验证码 ==========');
+      debugPrint('   - 注册方式: ${_registerMethod == RegisterMethod.phone ? "手机号" : "邮箱"}');
+      debugPrint('   - Phone: ${_registerMethod == RegisterMethod.phone ? _phoneController.text.trim() : "null"}');
+      debugPrint('   - Email: ${_registerMethod == RegisterMethod.email ? _emailController.text.trim() : "null"}');
+      
+      // 调用后端 API 发送验证码
+      final response = await AuthService.sendVerificationCode(
+        phone: _registerMethod == RegisterMethod.phone
+            ? _phoneController.text.trim()
+            : null,
+        email: _registerMethod == RegisterMethod.email
+            ? _emailController.text.trim()
+            : null,
+        type: 1, // 1-注册
+      );
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (response.isSuccess) {
+        debugPrint('✅ 验证码发送成功');
+        debugPrint('=====================================');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('验证码已发送'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+
+        // 开始倒计时
+        setState(() => _countdown = 60);
+
+        Future.doWhile(() async {
+          await Future.delayed(const Duration(seconds: 1));
+          if (_countdown > 0 && mounted) {
+            setState(() => _countdown--);
+            return true;
+          }
+          return false;
+        });
+      } else {
+        debugPrint('❌ 验证码发送失败 [${response.code}]: ${response.message}');
+        debugPrint('=====================================');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
       }
-      return false;
-    });
+    } catch (e, stackTrace) {
+      setState(() => _isLoading = false);
+
+      debugPrint('❌ 发送验证码异常: $e');
+      debugPrint('   - 堆栈信息: $stackTrace');
+      debugPrint('=====================================');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('发送失败: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
   }
 
   /// 注册
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -173,7 +249,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
       return;
     }
-    
+
     if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -184,16 +260,74 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
+    // 验证验证码不能为空
+    if (_verificationCodeController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('请输入验证码'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      // 调用后端 API 注册
+      debugPrint('📝 ========== 开始注册流程 ==========');
+      debugPrint('   - 注册方式: ${_registerMethod == RegisterMethod.phone ? "手机号" : "邮箱"}');
+      debugPrint('   - Phone: ${_registerMethod == RegisterMethod.phone ? _phoneController.text.trim() : "null"}');
+      debugPrint('   - Email: ${_registerMethod == RegisterMethod.email ? _emailController.text.trim() : "null"}');
+      debugPrint('   - AdminsID: ${widget.loginType == LoginType.admin ? 1 : 0}');
+      
+      // 第一步：验证验证码
+      debugPrint('🔍 步骤1: 验证验证码...');
+      final verifyResponse = await AuthService.verifyCode(
+        phone: _registerMethod == RegisterMethod.phone
+            ? _phoneController.text.trim()
+            : null,
+        email: _registerMethod == RegisterMethod.email
+            ? _emailController.text.trim()
+            : null,
+        code: _verificationCodeController.text.trim(),
+        type: 1, // 1-注册
+      );
+
+      if (!verifyResponse.isSuccess) {
+        setState(() => _isLoading = false);
+        debugPrint('❌ 验证码验证失败: ${verifyResponse.message}');
+        debugPrint('=====================================');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('验证码错误: ${verifyResponse.message}'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+        return;
+      }
+
+      debugPrint('✅ 验证码验证通过');
+
+      // 第二步：验证码正确，执行注册
+      debugPrint('📝 步骤2: 执行注册...');
       final response = await AuthService.register(
-        phone: _phoneController.text.trim(),
+        phone: _registerMethod == RegisterMethod.phone
+            ? _phoneController.text.trim()
+            : '',
+        email: _registerMethod == RegisterMethod.email
+            ? _emailController.text.trim()
+            : null,
         password: _passwordController.text,
-        nickname: _phoneController.text.trim(), // 使用手机号作为昵称
-        adminsId: 1, // TODO: 从配置或用户选择中获取
+        nickname: _registerMethod == RegisterMethod.phone
+            ? _phoneController.text.trim()
+            : _emailController.text.trim(),
+        adminsId: widget.loginType == LoginType.admin
+            ? 1
+            : 0, // 管理端需要 adminsId，用户端可以为 0
         agreeTerms: _agreeToTerms,
+        country: _countryManager.selectedCountry.code,
+        dialCode: _countryManager.selectedCountry.dialCode,
       );
 
       if (!mounted) return;
@@ -201,6 +335,9 @@ class _RegisterPageState extends State<RegisterPage> {
       setState(() => _isLoading = false);
 
       if (response.isSuccess) {
+        debugPrint('✅ 注册成功');
+        debugPrint('=====================================');
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(AppLocalizations.of(context).registerSuccess),
@@ -209,6 +346,9 @@ class _RegisterPageState extends State<RegisterPage> {
         );
         Navigator.pop(context);
       } else {
+        debugPrint('❌ 注册失败 [${response.code}]: ${response.message}');
+        debugPrint('=====================================');
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(response.message),
@@ -216,9 +356,13 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       setState(() => _isLoading = false);
-      
+
+      debugPrint('❌ 注册异常: $e');
+      debugPrint('   - 堆栈信息: $stackTrace');
+      debugPrint('=====================================');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -233,7 +377,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -264,7 +408,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   padding: const EdgeInsets.all(AppTheme.spacingMedium),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                    borderRadius:
+                        BorderRadius.circular(AppTheme.borderRadiusMedium),
                     border: Border.all(color: AppTheme.backgroundColor),
                   ),
                   child: Column(
@@ -285,9 +430,11 @@ class _RegisterPageState extends State<RegisterPage> {
                             child: _buildMethodButton(
                               icon: Icons.phone_android_rounded,
                               label: l10n.viaPhone,
-                              isSelected: _registerMethod == RegisterMethod.phone,
+                              isSelected:
+                                  _registerMethod == RegisterMethod.phone,
                               onTap: () {
-                                setState(() => _registerMethod = RegisterMethod.phone);
+                                setState(() =>
+                                    _registerMethod = RegisterMethod.phone);
                               },
                             ),
                           ),
@@ -296,9 +443,11 @@ class _RegisterPageState extends State<RegisterPage> {
                             child: _buildMethodButton(
                               icon: Icons.email_rounded,
                               label: l10n.viaEmail,
-                              isSelected: _registerMethod == RegisterMethod.email,
+                              isSelected:
+                                  _registerMethod == RegisterMethod.email,
                               onTap: () {
-                                setState(() => _registerMethod = RegisterMethod.email);
+                                setState(() =>
+                                    _registerMethod = RegisterMethod.email);
                               },
                             ),
                           ),
@@ -307,9 +456,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: AppTheme.spacingLarge),
-                
+
                 // 手机号输入（当选择手机号注册时显示）
                 if (_registerMethod == RegisterMethod.phone) ...[
                   InkWell(
@@ -326,22 +475,27 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       );
                     },
-                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                    borderRadius:
+                        BorderRadius.circular(AppTheme.borderRadiusMedium),
                     child: Container(
                       padding: const EdgeInsets.all(AppTheme.spacingMedium),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.borderRadiusMedium),
                         border: Border.all(color: AppTheme.backgroundColor),
                       ),
                       child: Row(
                         children: [
-                          Text(_countryManager.selectedCountry.flag, style: const TextStyle(fontSize: 24)),
+                          Text(_countryManager.selectedCountry.flag,
+                              style: const TextStyle(fontSize: 24)),
                           const SizedBox(width: AppTheme.spacingSmall),
                           Expanded(
                             child: Text(
-                              _countryManager.selectedCountry.getName(l10n.locale.languageCode),
-                              style: const TextStyle(fontSize: 16, color: AppTheme.textPrimary),
+                              _countryManager.selectedCountry
+                                  .getName(l10n.locale.languageCode),
+                              style: const TextStyle(
+                                  fontSize: 16, color: AppTheme.textPrimary),
                             ),
                           ),
                           Text(
@@ -356,17 +510,17 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-                  
                   const SizedBox(height: AppTheme.spacingMedium),
-                  
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
                     decoration: InputDecoration(
                       labelText: l10n.phoneNumber,
-                      prefixText: '${_countryManager.selectedCountry.dialCode} ',
+                      prefixText:
+                          '${_countryManager.selectedCountry.dialCode} ',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.borderRadiusMedium),
                       ),
                       filled: true,
                       fillColor: Colors.white,
@@ -379,7 +533,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     },
                   ),
                 ],
-                
+
                 // 邮箱输入（当选择邮箱注册时显示）
                 if (_registerMethod == RegisterMethod.email) ...[
                   TextFormField(
@@ -390,7 +544,8 @@ class _RegisterPageState extends State<RegisterPage> {
                       hintText: l10n.pleaseEnterEmail,
                       prefixIcon: const Icon(Icons.email_outlined),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                        borderRadius:
+                            BorderRadius.circular(AppTheme.borderRadiusMedium),
                       ),
                       filled: true,
                       fillColor: Colors.white,
@@ -406,9 +561,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     },
                   ),
                 ],
-                
+
                 const SizedBox(height: AppTheme.spacingMedium),
-                
+
                 // 验证码
                 Row(
                   children: [
@@ -419,7 +574,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         decoration: InputDecoration(
                           labelText: l10n.verificationCode,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                            borderRadius: BorderRadius.circular(
+                                AppTheme.borderRadiusMedium),
                           ),
                           filled: true,
                           fillColor: Colors.white,
@@ -436,7 +592,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(
                       width: 120,
                       child: ElevatedButton(
-                        onPressed: _countdown > 0 || _isLoading ? null : _sendVerificationCode,
+                        onPressed: _countdown > 0 || _isLoading
+                            ? null
+                            : _sendVerificationCode,
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
@@ -448,9 +606,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: AppTheme.spacingMedium),
-                
+
                 // 密码
                 TextFormField(
                   controller: _passwordController,
@@ -459,25 +617,30 @@ class _RegisterPageState extends State<RegisterPage> {
                     labelText: l10n.password,
                     hintText: l10n.passwordStrengthHint,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.borderRadiusMedium),
                     ),
                     filled: true,
                     fillColor: Colors.white,
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        _obscurePassword
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
                         color: AppTheme.textHint,
                       ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
                     ),
                     helperText: l10n.passwordComplexityError,
-                    helperStyle: const TextStyle(fontSize: 12, color: AppTheme.textHint),
+                    helperStyle:
+                        const TextStyle(fontSize: 12, color: AppTheme.textHint),
                   ),
                   validator: _validatePassword,
                 ),
-                
+
                 const SizedBox(height: AppTheme.spacingMedium),
-                
+
                 // 确认密码
                 TextFormField(
                   controller: _confirmPasswordController,
@@ -485,16 +648,20 @@ class _RegisterPageState extends State<RegisterPage> {
                   decoration: InputDecoration(
                     labelText: l10n.confirmPassword,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                      borderRadius:
+                          BorderRadius.circular(AppTheme.borderRadiusMedium),
                     ),
                     filled: true,
                     fillColor: Colors.white,
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                        _obscureConfirmPassword
+                            ? Icons.visibility_off_rounded
+                            : Icons.visibility_rounded,
                         color: AppTheme.textHint,
                       ),
-                      onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                      onPressed: () => setState(() =>
+                          _obscureConfirmPassword = !_obscureConfirmPassword),
                     ),
                   ),
                   validator: (value) {
@@ -504,45 +671,62 @@ class _RegisterPageState extends State<RegisterPage> {
                     return null;
                   },
                 ),
-                
+
                 const SizedBox(height: AppTheme.spacingMedium),
-                
+
                 // 用户协议
                 Row(
                   children: [
                     Checkbox(
                       value: _agreeToTerms,
-                      onChanged: (value) => setState(() => _agreeToTerms = value ?? false),
+                      onChanged: (value) async {
+                        setState(() => _agreeToTerms = value ?? false);
+                        // 实时保存协议同意状态（持久化）
+                        await LocalCache.saveAgreeTermsStatus(_agreeToTerms);
+                      },
                       activeColor: AppTheme.primaryColor,
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _agreeToTerms = !_agreeToTerms),
+                        onTap: () async {
+                          setState(() => _agreeToTerms = !_agreeToTerms);
+                          // 实时保存协议同意状态（持久化）
+                          await LocalCache.saveAgreeTermsStatus(_agreeToTerms);
+                        },
                         child: RichText(
                           text: TextSpan(
-                            style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                            style: const TextStyle(
+                                fontSize: 13, color: AppTheme.textSecondary),
                             children: [
                               TextSpan(text: l10n.agreeToTerms),
                               TextSpan(
                                 text: '《${l10n.userAgreement}》',
-                                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w500),
                                 recognizer: TapGestureRecognizer()
                                   ..onTap = () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (context) => const UserAgreementPage()),
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const UserAgreementPage()),
                                     );
                                   },
                               ),
                               TextSpan(text: l10n.and),
                               TextSpan(
                                 text: '《${l10n.privacyPolicy}》',
-                                style: const TextStyle(color: AppTheme.primaryColor, fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w500),
                                 recognizer: TapGestureRecognizer()
                                   ..onTap = () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()),
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              const PrivacyPolicyPage()),
                                     );
                                   },
                               ),
@@ -553,9 +737,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: AppTheme.spacingLarge),
-                
+
                 // 注册按钮
                 ElevatedButton(
                   onPressed: _isLoading ? null : _register,
@@ -566,9 +750,14 @@ class _RegisterPageState extends State<RegisterPage> {
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white)),
                         )
-                      : Text(l10n.register, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      : Text(l10n.register,
+                          style: const TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -577,7 +766,7 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
     );
   }
-  
+
   /// 构建注册方式按钮
   Widget _buildMethodButton({
     required IconData icon,
@@ -591,14 +780,13 @@ class _RegisterPageState extends State<RegisterPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected 
+          color: isSelected
               ? AppTheme.primaryColor.withOpacity(0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(AppTheme.borderRadiusSmall),
           border: Border.all(
-            color: isSelected 
-                ? AppTheme.primaryColor
-                : AppTheme.backgroundColor,
+            color:
+                isSelected ? AppTheme.primaryColor : AppTheme.backgroundColor,
             width: 1.5,
           ),
         ),
@@ -606,9 +794,7 @@ class _RegisterPageState extends State<RegisterPage> {
           children: [
             Icon(
               icon,
-              color: isSelected 
-                  ? AppTheme.primaryColor
-                  : AppTheme.textHint,
+              color: isSelected ? AppTheme.primaryColor : AppTheme.textHint,
               size: 28,
             ),
             const SizedBox(height: 6),
@@ -617,9 +803,8 @@ class _RegisterPageState extends State<RegisterPage> {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected 
-                    ? AppTheme.primaryColor
-                    : AppTheme.textSecondary,
+                color:
+                    isSelected ? AppTheme.primaryColor : AppTheme.textSecondary,
               ),
             ),
           ],

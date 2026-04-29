@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
-import '../../utils/terms_content.dart';
 import '../../theme.dart';
 
 /// 用户协议页面
@@ -10,7 +9,6 @@ class UserAgreementPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final uaContent = TermsContent.getUserAgreementSections(l10n.locale.languageCode);
     
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -34,21 +32,21 @@ class UserAgreementPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSection(l10n.uaAcceptance, uaContent['acceptance']!),
+            _buildSection(l10n.uaAcceptance, l10n.translate('uaAcceptanceContent')),
             
-            _buildSection(l10n.uaServices, uaContent['services']!),
+            _buildSection(l10n.uaServices, l10n.translate('uaServicesContent')),
             
-            _buildSection(l10n.uaRegistration, uaContent['registration']!),
+            _buildSection(l10n.uaRegistration, l10n.translate('uaRegistrationContent')),
             
-            _buildSection(l10n.uaConduct, uaContent['conduct']!),
+            _buildSection(l10n.uaConduct, l10n.translate('uaConductContent')),
             
-            _buildSection(l10n.uaIP, uaContent['ip']!),
+            _buildSection(l10n.uaIP, l10n.translate('uaIPContent')),
             
-            _buildSection(l10n.uaDisclaimer, uaContent['disclaimer']!),
+            _buildSection(l10n.uaDisclaimer, l10n.translate('uaDisclaimerContent')),
             
-            _buildSection(l10n.uaTermination, uaContent['termination']!),
+            _buildSection(l10n.uaTermination, l10n.translate('uaTerminationContent')),
             
-            _buildSection(l10n.uaLaw, uaContent['law']!),
+            _buildSection(l10n.uaLaw, l10n.translate('uaLawContent')),
             
             const SizedBox(height: AppTheme.spacingLarge),
             
@@ -101,7 +99,6 @@ class PrivacyPolicyPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final ppContent = TermsContent.getPrivacyPolicySections(l10n.locale.languageCode);
     
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -125,23 +122,23 @@ class PrivacyPolicyPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSection(l10n.ppIntro, ppContent['intro']!),
+            _buildSection(l10n.ppIntro, l10n.translate('ppIntroContent')),
             
-            _buildSection(l10n.ppCollection, ppContent['collection']!),
+            _buildSection(l10n.ppCollection, l10n.translate('ppCollectionContent')),
             
-            _buildSection(l10n.ppCookies, ppContent['cookies']!),
+            _buildSection(l10n.ppCookies, l10n.translate('ppCookiesContent')),
             
-            _buildSection(l10n.ppSharing, ppContent['sharing']!),
+            _buildSection(l10n.ppSharing, l10n.translate('ppSharingContent')),
             
-            _buildSection(l10n.ppProtection, ppContent['protection']!),
+            _buildSection(l10n.ppProtection, l10n.translate('ppProtectionContent')),
             
-            _buildSection(l10n.ppRights, ppContent['rights']!),
+            _buildSection(l10n.ppRights, l10n.translate('ppRightsContent')),
             
-            _buildSection(l10n.ppMinors, ppContent['minors']!),
+            _buildSection(l10n.ppMinors, l10n.translate('ppMinorsContent')),
             
-            _buildSection(l10n.ppUpdates, ppContent['updates']!),
+            _buildSection(l10n.ppUpdates, l10n.translate('ppUpdatesContent')),
             
-            _buildSection(l10n.ppContact, ppContent['contact']!),
+            _buildSection(l10n.ppContact, l10n.translate('ppContactContent')),
             
             const SizedBox(height: AppTheme.spacingLarge),
             

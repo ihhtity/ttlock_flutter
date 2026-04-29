@@ -197,4 +197,16 @@ class LocalCache {
     }
     return null;
   }
+  
+  // ==================== 用户协议同意状态 ====================
+  
+  /// 保存用户协议同意状态（按设备）
+  static Future<bool> saveAgreeTermsStatus(bool agreed) {
+    return setBool('agree_terms_accepted', agreed);
+  }
+  
+  /// 获取用户协议同意状态
+  static bool getAgreeTermsStatus() {
+    return getBool('agree_terms_accepted') ?? false;
+  }
 }

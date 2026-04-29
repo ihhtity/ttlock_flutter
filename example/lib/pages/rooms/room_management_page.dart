@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme.dart';
-import '../../utils/device_room_service.dart';
 import '../profile/profile_page.dart';
 import 'add_room_page.dart';
 import 'room_detail_page.dart';
 
-/// 房间管理页面（使用真实API）
+/// 房间管理页面
 class RoomManagementPage extends StatefulWidget {
   const RoomManagementPage({Key? key}) : super(key: key);
 
@@ -16,25 +15,131 @@ class RoomManagementPage extends StatefulWidget {
 
 class _RoomManagementPageState extends State<RoomManagementPage> {
   final TextEditingController _searchController = TextEditingController();
-  String _selectedStatus = 'all'; // all, vacant, rented
-  bool _isSearching = false; // 是否正在搜索
-  
-  List<RoomModel> _rooms = [];
-  bool _isLoading = false;
-  bool _hasError = false;
-  String _errorMessage = '';
-  
-  int _currentPage = 1;
-  int _totalPages = 1;
-  int _totalCount = 0;
-  
-  int _selectedIndex = 0;
+  String _selectedStatus = 'all'; // all, vacant, rented, maintenance
+  bool _isSearching = false; // 是否显示搜索框
 
-  @override
-  void initState() {
-    super.initState();
-    _loadRooms();
+  // 模拟房间数据
+  final List<Map<String, dynamic>> _allRooms = [
+    {
+      'id': '1',
+      'name': '101',
+      'type': '标准间',
+      'status': 'vacant', // vacant空闲、rented租用、maintenance维修
+      'battery': 85,
+      'devices': ['lock', 'light'],
+      'icon': Icons.hotel_rounded,
+      'color': AppTheme.successColor, // 空闲-绿色
+      'building': 'A栋',
+      'floor': 1,
+    },
+    {
+      'id': '2',
+      'name': '102',
+      'type': '大床房',
+      'status': 'rented',
+      'battery': 72,
+      'devices': ['lock', 'light', 'ac'],
+      'icon': Icons.bed_rounded,
+      'color': AppTheme.primaryColor, // 租用-蓝色
+      'building': 'A栋',
+      'floor': 1,
+    },
+    {
+      'id': '3',
+      'name': '103',
+      'type': '双床房',
+      'status': 'maintenance',
+      'battery': 45,
+      'devices': ['lock'],
+      'icon': Icons.hotel_rounded,
+      'color': AppTheme.errorColor, // 维修-红色
+      'building': 'A栋',
+      'floor': 1,
+    },
+    {
+      'id': '4',
+      'name': '201',
+      'type': '标准间',
+      'status': 'vacant',
+      'battery': 90,
+      'devices': ['lock', 'light'],
+      'icon': Icons.hotel_rounded,
+      'color': AppTheme.successColor,
+      'building': 'A栋',
+      'floor': 2,
+    },
+    {
+      'id': '5',
+      'name': '202',
+      'type': '套房',
+      'status': 'rented',
+      'battery': 100,
+      'devices': ['lock', 'light', 'ac', 'tv'],
+      'icon': Icons.star_rounded,
+      'color': AppTheme.primaryColor,
+      'building': 'A栋',
+      'floor': 2,
+    },
+    {
+      'id': '6',
+      'name': '203',
+      'type': '大床房',
+      'status': 'vacant',
+      'battery': 95,
+      'devices': ['lock', 'light'],
+      'icon': Icons.bed_rounded,
+      'color': AppTheme.successColor,
+      'building': 'A栋',
+      'floor': 2,
+    },
+    {
+      'id': '7',
+      'name': '301',
+      'type': '豪华套房',
+      'status': 'rented',
+      'battery': 88,
+      'devices': ['lock', 'light', 'ac', 'tv'],
+      'icon': Icons.diamond_rounded,
+      'color': AppTheme.primaryColor,
+      'building': 'B栋',
+      'floor': 3,
+    },
+    {
+      'id': '8',
+      'name': '302',
+      'type': '标准间',
+      'status': 'maintenance',
+      'battery': 30,
+      'devices': ['lock'],
+      'icon': Icons.hotel_rounded,
+      'color': AppTheme.errorColor,
+      'building': 'B栋',
+      'floor': 3,
+    },
+  ];
+
+  List<Map<String, dynamic>> get _rooms {
+    var filtered = _allRooms;
+
+    // 按房态筛选
+    if (_selectedStatus != 'all') {
+      filtered =
+          filtered.where((room) => room['status'] == _selectedStatus).toList();
+    }
+
+    // 按房间名字模糊查询
+    if (_searchController.text.isNotEmpty) {
+      filtered = filtered.where((room) {
+        return room['name'].toString().toLowerCase().contains(
+              _searchController.text.toLowerCase(),
+            );
+      }).toList();
+    }
+
+    return filtered;
   }
+
+  int _selectedIndex = 0;
 
   @override
   void dispose() {
@@ -42,66 +147,16 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
     super.dispose();
   }
 
-  /// 加载房间列表
-  Future<void> _loadRooms({bool refresh = false}) async {
-    if (refresh) {
-      _currentPage = 1;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
-
-    try {
-      String? statusFilter;
-      if (_selectedStatus != 'all') {
-        statusFilter = _selectedStatus;
-      }
-
-      String? keyword;
-      if (_searchController.text.isNotEmpty) {
-        keyword = _searchController.text;
-      }
-
-      final response = await RoomService.getRooms(
-        page: _currentPage,
-        pageSize: 20,
-        status: statusFilter,
-        keyword: keyword,
-      );
-
-      if (!mounted) return;
-
-      setState(() {
-        _isLoading = false;
-        
-        if (response.isSuccess && response.data != null) {
-          _rooms = response.data!.list;
-          _totalCount = response.data!.total;
-          _totalPages = (_totalCount / 20).ceil();
-          _hasError = false;
-        } else {
-          _hasError = true;
-          _errorMessage = response.message;
-        }
-      });
-    } catch (e) {
-      if (!mounted) return;
-      
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-        _errorMessage = '加载失败: $e';
-      });
-    }
-  }
-
-  /// 下拉刷新
-  Future<void> _onRefresh() async {
-    await _loadRooms(refresh: true);
-    
+  /// 刷新房间列表
+  Future<void> _refreshRooms() async {
+    // TODO: 实际刷新逻辑 - 从服务器获取最新数据
+    await Future.delayed(const Duration(seconds: 1));
     if (mounted) {
+      setState(() {
+        _selectedStatus = 'all'; // 自动跳回全部
+        _searchController.clear(); // 清空搜索
+        _isSearching = false; // 退出搜索模式
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('房间列表已刷新'),
@@ -110,25 +165,6 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
         ),
       );
     }
-  }
-
-  /// 搜索房间
-  void _onSearch() {
-    _loadRooms(refresh: true);
-  }
-
-  /// 清空搜索
-  void _clearSearch() {
-    _searchController.clear();
-    _loadRooms(refresh: true);
-  }
-
-  /// 切换状态筛选
-  void _changeStatusFilter(String status) {
-    setState(() {
-      _selectedStatus = status;
-    });
-    _loadRooms(refresh: true);
   }
 
   /// 跳转到添加房间页面
@@ -140,21 +176,21 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
       ),
     ).then((result) {
       if (result == true) {
-        _loadRooms(refresh: true);
+        setState(() {});
       }
     });
   }
 
-  /// 跳转到房间详情页面
-  void _navigateToRoomDetail(RoomModel room) {
+  /// 跳转到房间编辑页面
+  void _navigateToRoomDetail(Map<String, dynamic> room) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RoomDetailPage.fromModel(room: room),
+        builder: (context) => RoomDetailPage(room: room),
       ),
     ).then((result) {
       if (result == true) {
-        _loadRooms(refresh: true);
+        setState(() {});
       }
     });
   }
@@ -163,9 +199,11 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
   String _getStatusText(String status) {
     switch (status) {
       case 'vacant':
-        return '空置';
+        return '空闲';
       case 'rented':
-        return '已租';
+        return '租用';
+      case 'maintenance':
+        return '维修';
       default:
         return status;
     }
@@ -175,60 +213,215 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'vacant':
-        return AppTheme.successColor;
+        return AppTheme.successColor; // 绿色
       case 'rented':
-        return AppTheme.primaryColor;
+        return AppTheme.primaryColor; // 蓝色
+      case 'maintenance':
+        return AppTheme.errorColor; // 红色
       default:
-        return Colors.grey;
+        return AppTheme.textHint;
     }
   }
 
-  /// 获取状态图标
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'vacant':
-        return Icons.check_circle_outline;
-      case 'rented':
-        return Icons.home_rounded;
+  /// 获取设备图标
+  IconData _getDeviceIcon(String deviceType) {
+    switch (deviceType) {
+      case 'lock':
+        return Icons.lock_rounded;
+      case 'light':
+        return Icons.lightbulb_rounded;
+      case 'ac':
+        return Icons.ac_unit_rounded;
+      case 'tv':
+        return Icons.tv_rounded;
+      case 'minibar':
+        return Icons.local_bar_rounded;
       default:
-        return Icons.info_outline;
+        return Icons.devices_rounded;
     }
+  }
+
+  /// 获取电池图标
+  IconData _getBatteryIcon(int battery) {
+    if (battery >= 80) return Icons.battery_full_rounded;
+    if (battery >= 50) return Icons.battery_5_bar_rounded;
+    if (battery >= 20) return Icons.battery_2_bar_rounded;
+    return Icons.battery_alert_rounded;
+  }
+
+  /// 获取电池颜色
+  Color _getBatteryColor(int battery) {
+    if (battery >= 50) return AppTheme.successColor;
+    if (battery >= 20) return const Color(0xFFFFA500);
+    return AppTheme.errorColor;
+  }
+
+  /// 显示房间选项
+  void _showRoomOptions(Map<String, dynamic> room) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppTheme.borderRadiusLarge),
+        ),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_rounded,
+                    color: AppTheme.primaryColor),
+                title: const Text('编辑房间'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: 编辑房间
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.devices_rounded,
+                    color: AppTheme.primaryColor),
+                title: const Text('查看设备'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: 查看房间设备
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.settings_rounded,
+                    color: AppTheme.primaryColor),
+                title: const Text('房间设置'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // TODO: 房间设置
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.delete_rounded,
+                    color: AppTheme.errorColor),
+                title: const Text('删除房间',
+                    style: TextStyle(color: AppTheme.errorColor)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeleteRoom(room);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 确认删除房间
+  void _confirmDeleteRoom(Map<String, dynamic> room) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        ),
+        title: const Text('确认删除'),
+        content: Text('确定要删除 "${room['name']}" 吗？此操作不可恢复。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _allRooms.removeWhere((r) => r['id'] == room['id']);
+              });
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('房间已删除'),
+                  backgroundColor: AppTheme.successColor,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorColor,
+            ),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    
+    final vacantCount = _allRooms.where((r) => r['status'] == 'vacant').length;
+    final rentedCount = _allRooms.where((r) => r['status'] == 'rented').length;
+    final maintenanceCount =
+        _allRooms.where((r) => r['status'] == 'maintenance').length;
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: _isSearching
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: '搜索房间...',
-                  hintStyle: const TextStyle(color: Colors.white70),
-                  border: InputBorder.none,
+            ? Container(
+                constraints: const BoxConstraints(maxWidth: 300),
+                child: Theme(
+                  data: Theme.of(context).copyWith(
+                    inputDecorationTheme: const InputDecorationTheme(
+                      filled: false,
+                      border: InputBorder.none,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '搜索房间...',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 16,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
+                    ),
+                    onChanged: (value) {
+                      setState(() {});
+                    },
+                  ),
                 ),
-                onSubmitted: (_) => _onSearch(),
               )
-            : Text(l10n.roomManagement),
+            : const Text(
+                '房间管理',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: AppTheme.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           if (_isSearching)
             IconButton(
-              icon: const Icon(Icons.close),
+              icon: const Icon(Icons.close_rounded),
               onPressed: () {
                 setState(() {
                   _isSearching = false;
+                  _searchController.clear();
                 });
-                _clearSearch();
               },
             )
           else
             IconButton(
-              icon: const Icon(Icons.search),
+              icon: const Icon(Icons.search_rounded),
               onPressed: () {
                 setState(() {
                   _isSearching = true;
@@ -236,27 +429,150 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
               },
             ),
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _onRefresh,
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _refreshRooms,
           ),
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            onPressed: _navigateToAddRoom,
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
-          // 状态筛选标签
-          _buildStatusFilter(),
-          
-          // 房间列表
+          // 统计卡片 - 一横排4个
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 16,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF667EEA),
+                  const Color(0xFF764BA2),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF667EEA).withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatItem(
+                  '全部',
+                  _allRooms.length.toString(),
+                  Icons.home_rounded,
+                  Colors.white,
+                  _selectedStatus == 'all',
+                  () => setState(() => _selectedStatus = 'all'),
+                ),
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: Colors.white.withOpacity(0.2),
+                ),
+                _buildStatItem(
+                  '空闲',
+                  vacantCount.toString(),
+                  Icons.check_circle_rounded,
+                  AppTheme.successColor,
+                  _selectedStatus == 'vacant',
+                  () => setState(() => _selectedStatus = 'vacant'),
+                ),
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: Colors.white.withOpacity(0.2),
+                ),
+                _buildStatItem(
+                  '租用',
+                  rentedCount.toString(),
+                  Icons.person_rounded,
+                  AppTheme.primaryColor,
+                  _selectedStatus == 'rented',
+                  () => setState(() => _selectedStatus = 'rented'),
+                ),
+                Container(
+                  width: 1,
+                  height: 50,
+                  color: Colors.white.withOpacity(0.2),
+                ),
+                _buildStatItem(
+                  '维修',
+                  maintenanceCount.toString(),
+                  Icons.build_rounded,
+                  AppTheme.errorColor,
+                  _selectedStatus == 'maintenance',
+                  () => setState(() => _selectedStatus = 'maintenance'),
+                ),
+              ],
+            ),
+          ),
+
+          // 房间网格列表 - 一行4个，可上下滑动
           Expanded(
-            child: _buildRoomList(),
+            child: _rooms.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.home_work_rounded,
+                          size: 80,
+                          color: AppTheme.textHint.withOpacity(0.3),
+                        ),
+                        const SizedBox(height: AppTheme.spacingMedium),
+                        Text(
+                          _searchController.text.isEmpty ? '暂无房间' : '未找到匹配的房间',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppTheme.textHint,
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingSmall),
+                        ElevatedButton.icon(
+                          onPressed: _showAddRoomDialog,
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('添加房间'),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _refreshRooms,
+                    child: GridView.builder(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4, // 一行4个
+                        crossAxisSpacing: 6,
+                        mainAxisSpacing: 6,
+                        childAspectRatio: 0.80, // 卡片宽高比
+                      ),
+                      itemCount: _rooms.length,
+                      itemBuilder: (context, index) {
+                        return InkWell(
+                          onTap: () => _navigateToRoomDetail(_rooms[index]),
+                          child: _buildRoomGridItem(_rooms[index]),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToAddRoom,
-        icon: const Icon(Icons.add),
-        label: const Text('添加房间'),
-        backgroundColor: AppTheme.primaryColor,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -264,8 +580,9 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
           setState(() {
             _selectedIndex = index;
           });
-          
+
           if (index == 1) {
+            // 切换到个人中心
             Navigator.push(
               context,
               MaterialPageRoute(
@@ -278,6 +595,11 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
             });
           }
         },
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: AppTheme.primaryColor,
+        unselectedItemColor: AppTheme.textHint,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home_rounded),
@@ -292,229 +614,235 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
     );
   }
 
-  /// 构建状态筛选器
-  Widget _buildStatusFilter() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: Colors.white,
-      child: Row(
-        children: [
-          _buildFilterChip('全部', 'all'),
-          const SizedBox(width: 8),
-          _buildFilterChip('空置', 'vacant'),
-          const SizedBox(width: 8),
-          _buildFilterChip('已租', 'rented'),
+  /// 构建房间网格项（小卡片）
+  Widget _buildRoomGridItem(Map<String, dynamic> room) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+        side: BorderSide(
+          color: room['color'].withOpacity(0.3),
+          width: 2,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 房间名字
+            Text(
+              room['name'],
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: room['color'],
+                height: 1.2,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+
+            // 房间类型
+            Text(
+              room['type'],
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppTheme.textSecondary,
+                height: 1.2,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+
+            // 电量显示
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  _getBatteryIcon(room['battery']),
+                  size: 13,
+                  color: _getBatteryColor(room['battery']),
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  '${room['battery']}%',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: _getBatteryColor(room['battery']),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+
+            // 设备图标列表
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 2,
+                runSpacing: 2,
+                children: (room['devices'] as List<String>).map((device) {
+                  return Icon(
+                    _getDeviceIcon(device),
+                    size: 11,
+                    color: AppTheme.textHint,
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 显示添加房间对话框
+  void _showAddRoomDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        ),
+        title: const Text('添加房间'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('请选择房间类型：'),
+            SizedBox(height: 16),
+            ListTile(
+              leading: Icon(Icons.hotel_rounded, color: AppTheme.primaryColor),
+              title: Text('标准间'),
+              dense: true,
+            ),
+            ListTile(
+              leading: Icon(Icons.bed_rounded, color: AppTheme.primaryColor),
+              title: Text('大床房'),
+              dense: true,
+            ),
+            ListTile(
+              leading: Icon(Icons.star_rounded, color: AppTheme.primaryColor),
+              title: Text('套房'),
+              dense: true,
+            ),
+            ListTile(
+              leading:
+                  Icon(Icons.diamond_rounded, color: AppTheme.primaryColor),
+              title: Text('豪华套房'),
+              dense: true,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('开始添加房间...'),
+                  backgroundColor: AppTheme.primaryColor,
+                ),
+              );
+            },
+            child: const Text('下一步'),
+          ),
         ],
       ),
     );
   }
 
-  /// 构建筛选标签
-  Widget _buildFilterChip(String label, String value) {
-    final isSelected = _selectedStatus == value;
-    
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => _changeStatusFilter(value),
-      backgroundColor: Colors.grey[200],
-      selectedColor: AppTheme.primaryColor.withOpacity(0.2),
-      checkmarkColor: AppTheme.primaryColor,
-      labelStyle: TextStyle(
-        color: isSelected ? AppTheme.primaryColor : Colors.black87,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
-    );
-  }
-
-  /// 构建房间列表
-  Widget _buildRoomList() {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (_hasError) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppTheme.errorColor,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppTheme.textSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => _loadRooms(refresh: true),
-              child: const Text('重试'),
-            ),
-          ],
+  /// 构建统计项
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 8,
+          vertical: 8,
         ),
-      );
-    }
-
-    if (_rooms.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '暂无房间数据',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _navigateToAddRoom,
-              icon: const Icon(Icons.add),
-              label: const Text('添加房间'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: _onRefresh,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: _rooms.length,
-        itemBuilder: (context, index) {
-          final room = _rooms[index];
-          return _buildRoomCard(room);
-        },
-      ),
-    );
-  }
-
-  /// 构建房间卡片
-  Widget _buildRoomCard(RoomModel room) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: () => _navigateToRoomDetail(room),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // 状态图标
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: _getStatusColor(room.status).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  _getStatusIcon(room.status),
-                  color: _getStatusColor(room.status),
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              
-              // 房间信息
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          room.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(room.status).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            _getStatusText(room.status),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _getStatusColor(room.status),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${room.type ?? '标准间'} · ${room.building ?? ''}${room.floor != null ? '${room.floor}层' : ''}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    Colors.white.withOpacity(0.25),
+                    Colors.white.withOpacity(0.15),
                   ],
-                ),
-              ),
-              
-              // 电量指示
-              Column(
-                children: [
-                  Icon(
-                    Icons.battery_full,
-                    color: room.battery > 50 
-                        ? AppTheme.successColor 
-                        : AppTheme.warningColor,
-                    size: 20,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isSelected ? null : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${room.battery}%',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: room.battery > 50 
-                          ? AppTheme.successColor 
-                          : AppTheme.warningColor,
-                    ),
-                  ),
-                ],
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? Colors.white.withOpacity(0.2)
+                    : Colors.transparent,
+                shape: BoxShape.circle,
               ),
-              
-              const SizedBox(width: 8),
-              const Icon(
-                Icons.chevron_right,
-                color: AppTheme.textSecondary,
+              child: Icon(
+                icon,
+                color: isSelected ? Colors.white : color,
+                size: isSelected ? 22 : 20,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: isSelected ? 20 : 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color:
+                    isSelected ? Colors.white : Colors.white.withOpacity(0.7),
+                fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );

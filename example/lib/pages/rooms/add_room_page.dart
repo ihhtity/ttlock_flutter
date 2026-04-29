@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../theme.dart';
-import '../../utils/device_room_service.dart';
 
 /// 添加房间页面
 class AddRoomPage extends StatefulWidget {
@@ -135,56 +134,16 @@ class _AddRoomPageState extends State<AddRoomPage> {
     );
   }
 
-  void _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // 显示加载指示器
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
-    try {
-      // 调用后端 API 创建房间
-      final response = await RoomService.createRoom(
-        name: _nameController.text.trim(),
-        type: _selectedType,
-        building: _selectedBuilding,
-        floor: int.tryParse(_floorController.text.trim()),
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context); // 关闭加载指示器
-
-      if (response.isSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('房间添加成功'),
-            backgroundColor: AppTheme.successColor,
-          ),
-        );
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(response.message),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context); // 关闭加载指示器
-      
+  void _submitForm() {
+    if (_formKey.currentState!.validate()) {
+      // TODO: 实际保存逻辑
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('添加失败: $e'),
-          backgroundColor: AppTheme.errorColor,
+        const SnackBar(
+          content: Text('房间添加成功'),
+          backgroundColor: AppTheme.successColor,
         ),
       );
+      Navigator.pop(context, true);
     }
   }
 

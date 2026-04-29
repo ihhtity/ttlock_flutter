@@ -16,6 +16,7 @@ import (
 
 func main() {
 	// 解析命令行参数
+	// 热加载测试 - air 会自动检测文件变化并重启
 	configPath := "configs/config.yaml"
 	if len(os.Args) > 1 {
 		configPath = os.Args[1]

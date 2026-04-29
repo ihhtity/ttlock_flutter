@@ -5,7 +5,7 @@ import '../../models/country_model.dart';
 import '../../theme.dart';
 import '../../utils/country_selection_manager.dart';
 import '../../utils/auth_service.dart';
-// import '../../utils/local_json_storage.dart';  // 已移除，使用内存存储
+import '../../utils/local_cache.dart';
 import 'country_selector_page.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
@@ -14,7 +14,12 @@ import '../rooms/room_management_page.dart';
 
 /// 登录页面
 class LoginPage extends StatefulWidget {
-  const LoginPage({Key? key}) : super(key: key);
+  final LoginType loginType;
+  
+  const LoginPage({
+    Key? key,
+    this.loginType = LoginType.client, // 默认用户端
+  }) : super(key: key);
 
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -40,19 +45,19 @@ class _LoginPageState extends State<LoginPage> {
     _phoneController.text = '19830357494';
     _passwordController.text = '19830357494a.';
     
-    // 加载用户协议同意状态（使用持久化存储）
+    // 加载用户协议同意状态（持久化）
     _loadAgreementStatus();
   }
 
   /// 加载用户协议同意状态（持久化）
   Future<void> _loadAgreementStatus() async {
     try {
-      // final agreed = await LocalJsonStorage.getSetting('agree_to_terms');
-      // if (mounted) {
-      //   setState(() {
-      //     _agreeToTerms = agreed == true;
-      //   });
-      // }
+      final agreed = LocalCache.getAgreeTermsStatus();
+      if (mounted) {
+        setState(() {
+          _agreeToTerms = agreed;
+        });
+      }
     } catch (e) {
       print('加载协议状态失败: $e');
     }
@@ -117,10 +122,15 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = true);
 
     try {
+      debugPrint('🔑 ========== 开始登录流程 ==========');
+      debugPrint('   - 登录类型: ${widget.loginType == LoginType.admin ? "管理端" : "用户端"}');
+      debugPrint('   - 手机号: ${_phoneController.text.trim()}');
+      
       // 调用后端 API 登录
       final response = await AuthService.login(
         phone: _phoneController.text.trim(),
         password: _passwordController.text,
+        loginType: widget.loginType,
       );
 
       if (!mounted) return;
@@ -128,8 +138,9 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = false);
 
       if (response.isSuccess) {
+        debugPrint('✅ 登录成功，准备跳转...');
         // 保存用户协议同意状态（持久化）
-        // await LocalJsonStorage.updateSetting('agree_to_terms', _agreeToTerms);
+        await LocalCache.saveAgreeTermsStatus(_agreeToTerms);
         
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -145,6 +156,9 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       } else {
+        debugPrint('❌ 登录失败 [${response.code}]: ${response.message}');
+        debugPrint('=====================================');
+        
         // 显示错误信息
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -153,8 +167,12 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       setState(() => _isLoading = false);
+      
+      debugPrint('❌ 登录异常: $e');
+      debugPrint('   - 堆栈信息: $stackTrace');
+      debugPrint('=====================================');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -185,13 +203,17 @@ class _LoginPageState extends State<LoginPage> {
                 
                 // Logo和标题
                 Icon(
-                  Icons.lock_outline_rounded,
+                  widget.loginType == LoginType.admin 
+                    ? Icons.admin_panel_settings_rounded
+                    : Icons.person_outline_rounded,
                   size: 80,
-                  color: AppTheme.primaryColor,
+                  color: widget.loginType == LoginType.admin 
+                    ? AppTheme.primaryColor
+                    : AppTheme.successColor,
                 ),
                 const SizedBox(height: AppTheme.spacingMedium),
                 Text(
-                  l10n.appName,
+                  widget.loginType == LoginType.admin ? '管理端登录' : '用户端登录',
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -201,7 +223,9 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: AppTheme.spacingSmall),
                 Text(
-                  l10n.welcomeToTTLock,
+                  widget.loginType == LoginType.admin 
+                    ? '管理员、运维人员使用'
+                    : '普通用户使用',
                   style: const TextStyle(
                     fontSize: 14,
                     color: AppTheme.textSecondary,
@@ -327,7 +351,9 @@ class _LoginPageState extends State<LoginPage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const ForgotPasswordPage(),
+                          builder: (context) => ForgotPasswordPage(
+                            loginType: widget.loginType,
+                          ),
                         ),
                       );
                     },
@@ -351,7 +377,7 @@ class _LoginPageState extends State<LoginPage> {
                       onChanged: (value) async {
                         setState(() => _agreeToTerms = value ?? false);
                         // 实时保存协议同意状态（持久化）
-                        // await LocalJsonStorage.updateSetting('agree_to_terms', _agreeToTerms);
+                        await LocalCache.saveAgreeTermsStatus(_agreeToTerms);
                       },
                       activeColor: AppTheme.primaryColor,
                     ),
@@ -360,7 +386,7 @@ class _LoginPageState extends State<LoginPage> {
                         onTap: () async {
                           setState(() => _agreeToTerms = !_agreeToTerms);
                           // 实时保存协议同意状态（持久化）
-                          // await LocalJsonStorage.updateSetting('agree_to_terms', _agreeToTerms);
+                          await LocalCache.saveAgreeTermsStatus(_agreeToTerms);
                         },
                         child: RichText(
                           text: TextSpan(
@@ -458,7 +484,9 @@ class _LoginPageState extends State<LoginPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const RegisterPage(),
+                            builder: (context) => RegisterPage(
+                              loginType: widget.loginType,
+                            ),
                           ),
                         );
                       },

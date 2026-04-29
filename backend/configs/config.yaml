@@ -52,3 +52,22 @@ rate_limit:
   enabled: true
   requests_per_second: 100
   burst_size: 200
+
+# SMS Configuration (Aliyun)
+sms:
+  enabled: false  # Set to true when you have Aliyun SMS credentials
+  access_key_id: "your-access-key-id"
+  access_key_secret: "your-access-key-secret"
+  sign_name: "宝士力得"
+  template_code: "SMS_123456789"  # Replace with your template code
+  region_id: "cn-hangzhou"
+
+# Email Configuration (SMTP)
+email:
+  enabled: true
+  host: "smtp.qq.com"  # SMTP server host
+  port: 465  # SMTP server port (587 for TLS, 465 for SSL)
+  username: "foxsummer@bsldtech.com"  # Your email address
+  password: "pwikcgtulpcyichc"  # SMTP authorization code
+  from_name: "宝士力得"
+  use_tls: true  # 端口 465 使用 SSL，需要设置为 true

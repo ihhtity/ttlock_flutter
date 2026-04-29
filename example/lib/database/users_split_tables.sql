@@ -42,6 +42,7 @@ CREATE TABLE `admins` (
   `role` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '角色：1-超级管理员 2-普通管理员 3-运维人员',
   `permissions` TEXT DEFAULT NULL COMMENT '权限列表JSON',
   `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-正常',
+  `agree_terms` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否同意用户协议和隐私政策：0-未同意，1-已同意',
   `last_login` DATETIME DEFAULT NULL COMMENT '最后登录',
   `login_count` INT UNSIGNED DEFAULT 0 COMMENT '登录次数',
   `created` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -63,7 +64,7 @@ DROP TABLE IF EXISTS `clients`;
 CREATE TABLE `clients` (
   `id` INT UNSIGNED AUTO_INCREMENT COMMENT '用户ID',
   `admins_id` INT UNSIGNED NOT NULL COMMENT '所属管理者ID',
-  `phone` VARCHAR(20) NOT NULL COMMENT '手机号',
+  `phone` VARCHAR(20) DEFAULT NULL COMMENT '手机号',
   `email` VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
   `password` VARCHAR(255) NOT NULL COMMENT '密码',
   `nickname` VARCHAR(50) DEFAULT NULL COMMENT '昵称',
@@ -82,8 +83,8 @@ CREATE TABLE `clients` (
 
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_phone` (`phone`),
+  UNIQUE KEY `uk_email` (`email`),
   KEY `idx_admins_id` (`admins_id`),
-  KEY `idx_email` (`email`),
   KEY `idx_is_vendor` (`is_vendor`),
   KEY `idx_status` (`status`),
   KEY `idx_created` (`created`)

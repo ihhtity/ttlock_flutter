@@ -3,7 +3,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/country_model.dart';
 import '../../theme.dart';
 import '../../utils/country_selection_manager.dart';
-import '../../utils/debounce_throttle.dart';
+import '../../utils/auth_service.dart';
 import 'country_selector_page.dart';
 
 /// 找回密码方式枚举
@@ -14,7 +14,12 @@ enum RecoveryMethod {
 
 /// 忘记密码页面
 class ForgotPasswordPage extends StatefulWidget {
-  const ForgotPasswordPage({Key? key}) : super(key: key);
+  final LoginType loginType;
+  
+  const ForgotPasswordPage({
+    Key? key,
+    this.loginType = LoginType.client, // 默认用户端
+  }) : super(key: key);
 
   @override
   _ForgotPasswordPageState createState() => _ForgotPasswordPageState();
@@ -134,23 +139,72 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     setState(() => _isLoading = true);
     
-    // TODO: 调用API发送验证码
-    await Future.delayed(const Duration(seconds: 1));
-    
-    setState(() {
-      _isLoading = false;
-      _countdown = 60;
-    });
-    
-    // 倒计时
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (_countdown > 0 && mounted) {
-        setState(() => _countdown--);
-        return true;
+    try {
+      debugPrint('📧 ========== 开始发送验证码（找回密码） ==========');
+      debugPrint('   - 找回方式: ${_recoveryMethod == RecoveryMethod.phone ? "手机号" : "邮箱"}');
+      debugPrint('   - Phone: ${_recoveryMethod == RecoveryMethod.phone ? _phoneController.text.trim() : "null"}');
+      debugPrint('   - Email: ${_recoveryMethod == RecoveryMethod.email ? _emailController.text.trim() : "null"}');
+      
+      // 调用后端 API 发送验证码
+      final response = await AuthService.sendVerificationCode(
+        phone: _recoveryMethod == RecoveryMethod.phone ? _phoneController.text.trim() : null,
+        email: _recoveryMethod == RecoveryMethod.email ? _emailController.text.trim() : null,
+        type: 2, // 2-找回密码
+      );
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (response.isSuccess) {
+        debugPrint('✅ 验证码发送成功');
+        debugPrint('=====================================');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('验证码已发送'),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+        
+        // 开始倒计时
+        setState(() => _countdown = 60);
+        
+        Future.doWhile(() async {
+          await Future.delayed(const Duration(seconds: 1));
+          if (_countdown > 0 && mounted) {
+            setState(() => _countdown--);
+            return true;
+          }
+          return false;
+        });
+      } else {
+        debugPrint('❌ 验证码发送失败 [${response.code}]: ${response.message}');
+        debugPrint('=====================================');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
       }
-      return false;
-    });
+    } catch (e, stackTrace) {
+      setState(() => _isLoading = false);
+      
+      debugPrint('❌ 发送验证码异常: $e');
+      debugPrint('   - 堆栈信息: $stackTrace');
+      debugPrint('=====================================');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('发送失败: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    }
   }
 
   /// 重置密码
@@ -159,20 +213,62 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     setState(() => _isLoading = true);
     
-    // TODO: 调用API重置密码
-    await Future.delayed(const Duration(seconds: 2));
-    
-    setState(() => _isLoading = false);
-
-    if (mounted) {
-      final l10n = AppLocalizations.of(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.passwordResetSuccess),
-          backgroundColor: AppTheme.successColor,
-        ),
+    try {
+      debugPrint('🔄 ========== 开始重置密码 ==========');
+      debugPrint('   - 找回方式: ${_recoveryMethod == RecoveryMethod.phone ? "手机号" : "邮箱"}');
+      debugPrint('   - Phone: ${_recoveryMethod == RecoveryMethod.phone ? _phoneController.text.trim() : "null"}');
+      debugPrint('   - Email: ${_recoveryMethod == RecoveryMethod.email ? _emailController.text.trim() : "null"}');
+      
+      // 调用后端 API 重置密码
+      final response = await AuthService.resetPassword(
+        phone: _recoveryMethod == RecoveryMethod.phone ? _phoneController.text.trim() : null,
+        email: _recoveryMethod == RecoveryMethod.email ? _emailController.text.trim() : null,
+        code: _verificationCodeController.text.trim(),
+        newPassword: _newPasswordController.text,
       );
-      Navigator.pop(context);
+
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+
+      if (response.isSuccess) {
+        debugPrint('✅ 密码重置成功');
+        debugPrint('=====================================');
+        
+        final l10n = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.passwordResetSuccess),
+            backgroundColor: AppTheme.successColor,
+          ),
+        );
+        Navigator.pop(context);
+      } else {
+        debugPrint('❌ 密码重置失败 [${response.code}]: ${response.message}');
+        debugPrint('=====================================');
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(response.message),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
+    } catch (e, stackTrace) {
+      setState(() => _isLoading = false);
+      
+      debugPrint('❌ 重置密码异常: $e');
+      debugPrint('   - 堆栈信息: $stackTrace');
+      debugPrint('=====================================');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('重置失败: $e'),
+            backgroundColor: AppTheme.errorColor,
+          ),
+        );
+      }
     }
   }
 
