@@ -394,141 +394,83 @@ class _LoginPageState extends State<LoginPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.spacingXLarge),
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 20),
-
-                // 顶部标题 - 左图标右文字（无卡片背景）
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: (widget.loginType == LoginType.admin 
-                            ? AppTheme.primaryColor 
-                            : AppTheme.successColor).withOpacity(0.1),
-                      ),
-                      child: Icon(
-                        widget.loginType == LoginType.admin 
-                          ? Icons.admin_panel_settings_rounded
-                          : Icons.person_outline_rounded,
-                        size: 48,
-                        color: widget.loginType == LoginType.admin 
-                          ? AppTheme.primaryColor
-                          : AppTheme.successColor,
-                      ),
-                    ),
-                    const SizedBox(width: 20),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.loginType == LoginType.admin ? '管理端登录' : '用户端登录',
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            widget.loginType == LoginType.admin 
-                              ? '管理员、运维人员使用'
-                              : '普通用户使用',
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
                 // 登录方式选择卡片
                 Container(
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.primaryColor.withOpacity(0.05),
-                        AppTheme.primaryColor.withOpacity(0.02),
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius:
-                        BorderRadius.circular(AppTheme.borderRadiusLarge),
-                    border: Border.all(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
-                      width: 1,
-                    ),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.swap_horiz_rounded,
-                          size: 24,
-                          color: AppTheme.primaryColor,
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.swap_horiz_rounded,
+                              size: 20,
+                              color: AppTheme.primaryColor,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '选择登录方式',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '选择登录方式',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: AppTheme.primaryColor,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildLoginMethodButton(
+                                icon: Icons.phone_android_rounded,
+                                label: '手机号',
+                                isSelected: _usePhoneLogin,
+                                onTap: () {
+                                  setState(() => _usePhoneLogin = true);
+                                },
                               ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _buildLoginMethodButton(
-                                      icon: Icons.phone_android_rounded,
-                                      label: '手机号',
-                                      isSelected: _usePhoneLogin,
-                                      onTap: () {
-                                        setState(() => _usePhoneLogin = true);
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: _buildLoginMethodButton(
-                                      icon: Icons.email_rounded,
-                                      label: '邮箱',
-                                      isSelected: !_usePhoneLogin,
-                                      onTap: () {
-                                        setState(() => _usePhoneLogin = false);
-                                      },
-                                    ),
-                                  ),
-                                ],
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildLoginMethodButton(
+                                icon: Icons.email_rounded,
+                                label: '邮箱',
+                                isSelected: !_usePhoneLogin,
+                                onTap: () {
+                                  setState(() => _usePhoneLogin = false);
+                                },
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 
                 // 国家/地区选择卡片
                 _buildInputContainer(
@@ -594,9 +536,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
-
-                // 手机号输入（当选择手机号登录时显示）
+                const SizedBox(height: 16),
                 if (_usePhoneLogin) ...[
                   _buildInputContainer(
                     child: TextFormField(
@@ -688,9 +628,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ],
 
-                const SizedBox(height: 20),
-
-                // 密码输入
+                const SizedBox(height: 16),
                 _buildInputContainer(
                   child: TextFormField(
                     controller: _passwordController,
@@ -744,7 +682,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: AppTheme.spacingSmall),
+                const SizedBox(height: 12),
 
                 // 忘记密码
                 Align(
@@ -770,9 +708,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: AppTheme.spacingMedium),
-
-                // 用户协议
+                const SizedBox(height: 16),
                 Row(
                   children: [
                     Checkbox(
@@ -842,7 +778,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
 
-                const SizedBox(height: AppTheme.spacingLarge),
+                const SizedBox(height: 20),
 
                 // 登录按钮
                 ElevatedButton(
@@ -873,7 +809,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                 ),
 
-                const SizedBox(height: AppTheme.spacingMedium),
+                const SizedBox(height: 12),
 
                 // 注册链接
                 Row(

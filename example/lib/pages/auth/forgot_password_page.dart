@@ -313,7 +313,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.spacingXLarge),
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Form(
             key: _formKey,
             child: Column(
@@ -368,7 +369,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                 ),
                 
-                const SizedBox(height: AppTheme.spacingLarge),
+                const SizedBox(height: 16),
                 
                 // 手机号输入（当选择手机号找回时显示）
                 if (_recoveryMethod == RecoveryMethod.phone) ...[
@@ -417,7 +418,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                   ),
                   
-                  const SizedBox(height: AppTheme.spacingMedium),
+                  const SizedBox(height: 16),
                   
                   TextFormField(
                     controller: _phoneController,
@@ -467,7 +468,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                 ],
                 
-                const SizedBox(height: AppTheme.spacingMedium),
+                const SizedBox(height: 16),
                 
                 // 验证码
                 Row(
@@ -508,9 +509,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                   ],
                 ),
-                
-                const SizedBox(height: AppTheme.spacingMedium),
-                
+                                
+                const SizedBox(height: 20),
+                                
                 // 找回密码按钮
                 ElevatedButton(
                   onPressed: _isLoading ? null : _retrievePassword,
@@ -532,7 +533,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         ),
                 ),
                 
-                const SizedBox(height: AppTheme.spacingMedium),
+                const SizedBox(height: 16),
                 
                 // 提示信息
                 Container(

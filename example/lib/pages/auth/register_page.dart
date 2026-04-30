@@ -455,7 +455,8 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTheme.spacingXLarge),
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           child: Form(
             key: _formKey,
             child: Column(
@@ -515,7 +516,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
 
-                const SizedBox(height: AppTheme.spacingLarge),
+                const SizedBox(height: 16),
 
                 // 手机号输入（当选择手机号注册时显示）
                 if (_registerMethod == RegisterMethod.phone) ...[
@@ -568,7 +569,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: AppTheme.spacingMedium),
+                  const SizedBox(height: 16),
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
@@ -665,9 +666,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ],
                 ),
 
-                const SizedBox(height: AppTheme.spacingMedium),
-
-                // 密码
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
@@ -697,7 +696,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   validator: _validatePassword,
                 ),
 
-                const SizedBox(height: AppTheme.spacingMedium),
+                const SizedBox(height: 12),
 
                 // 确认密码
                 TextFormField(
@@ -730,7 +729,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   },
                 ),
 
-                const SizedBox(height: AppTheme.spacingMedium),
+                const SizedBox(height: 12),
 
                 // 用户协议
                 Row(
@@ -796,7 +795,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ],
                 ),
 
-                const SizedBox(height: AppTheme.spacingLarge),
+                const SizedBox(height: 20),
 
                 // 注册按钮
                 ElevatedButton(
