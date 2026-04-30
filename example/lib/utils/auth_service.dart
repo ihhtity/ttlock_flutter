@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'api_client.dart';
+import 'local_cache.dart';
 
 /// 登录类型枚举
 enum LoginType {
@@ -110,9 +111,18 @@ class AuthService {
 
         // 保存Token
         HttpClient.setToken(loginData.token);
+        
+        // 保存用户信息到本地缓存
+        await LocalCache.saveUserInfo(loginData.user.toJson());
+        await LocalCache.saveLoginStatus(true);
+        await LocalCache.saveUserId(loginData.user.id);
+        if (loginData.user.phone != null) {
+          await LocalCache.savePhoneNumber(loginData.user.phone!);
+        }
 
         debugPrint(
             '✅ 登录成功: ${loginData.user.nickname ?? loginData.user.phone ?? loginData.user.email}');
+        debugPrint('💾 用户信息已缓存到本地');
 
         return ApiResponse.fromSuccess(loginData);
       } else {

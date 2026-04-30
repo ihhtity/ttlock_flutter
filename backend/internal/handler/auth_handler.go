@@ -258,3 +258,283 @@ func (h *AuthHandler) RetrievePassword(c *gin.Context) {
 		"password": password,
 	})
 }
+
+// UpdateProfile 更新用户个人信息
+func (h *AuthHandler) UpdateProfile(c *gin.Context) {
+	userID, userExists := c.Get("user_id")
+	adminID, adminExists := c.Get("admins_id")
+	role, _ := c.Get("role")
+	
+	// 根据角色确定使用哪个ID
+	var targetID int
+	if roleInt, ok := role.(int); ok && roleInt > 0 {
+		// 管理端用户
+		if !adminExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = adminID.(int)
+	} else {
+		// 普通用户
+		if !userExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = userID.(int)
+	}
+
+	var req model.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("更新个人信息参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.authService.UpdateProfile(targetID, &req); err != nil {
+		logger.Warn("更新个人信息失败", zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "更新成功", nil)
+}
+
+// BindPhone 绑定手机号
+func (h *AuthHandler) BindPhone(c *gin.Context) {
+	userID, userExists := c.Get("user_id")
+	adminID, adminExists := c.Get("admins_id")
+	role, _ := c.Get("role")
+	
+	// 根据角色确定使用哪个ID
+	var targetID int
+	if roleInt, ok := role.(int); ok && roleInt > 0 {
+		// 管理端用户
+		if !adminExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = adminID.(int)
+	} else {
+		// 普通用户
+		if !userExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = userID.(int)
+	}
+
+	var req model.BindPhoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("绑定手机号参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.authService.BindPhone(targetID, &req); err != nil {
+		logger.Warn("绑定手机号失败", zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "绑定成功", nil)
+}
+
+// BindEmail 绑定邮箱
+func (h *AuthHandler) BindEmail(c *gin.Context) {
+	userID, userExists := c.Get("user_id")
+	adminID, adminExists := c.Get("admins_id")
+	role, _ := c.Get("role")
+	
+	// 根据角色确定使用哪个ID
+	var targetID int
+	if roleInt, ok := role.(int); ok && roleInt > 0 {
+		// 管理端用户
+		if !adminExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = adminID.(int)
+	} else {
+		// 普通用户
+		if !userExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = userID.(int)
+	}
+
+	var req model.BindEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("绑定邮箱参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.authService.BindEmail(targetID, &req); err != nil {
+		logger.Warn("绑定邮箱失败", zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "绑定成功", nil)
+}
+
+// ChangePhone 更换手机号
+func (h *AuthHandler) ChangePhone(c *gin.Context) {
+	userID, userExists := c.Get("user_id")
+	adminID, adminExists := c.Get("admins_id")
+	role, _ := c.Get("role")
+	
+	// 根据角色确定使用哪个ID
+	var targetID int
+	if roleInt, ok := role.(int); ok && roleInt > 0 {
+		// 管理端用户
+		if !adminExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = adminID.(int)
+	} else {
+		// 普通用户
+		if !userExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = userID.(int)
+	}
+
+	var req model.ChangePhoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("更换手机号参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.authService.ChangePhone(targetID, &req); err != nil {
+		logger.Warn("更换手机号失败", zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "更换成功", nil)
+}
+
+// ChangeEmail 更换邮箱
+func (h *AuthHandler) ChangeEmail(c *gin.Context) {
+	userID, userExists := c.Get("user_id")
+	adminID, adminExists := c.Get("admins_id")
+	role, _ := c.Get("role")
+	
+	// 根据角色确定使用哪个ID
+	var targetID int
+	if roleInt, ok := role.(int); ok && roleInt > 0 {
+		// 管理端用户
+		if !adminExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = adminID.(int)
+	} else {
+		// 普通用户
+		if !userExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = userID.(int)
+	}
+
+	var req model.ChangeEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("更换邮箱参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.authService.ChangeEmail(targetID, &req); err != nil {
+		logger.Warn("更换邮箱失败", zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "更换成功", nil)
+}
+
+// UnbindPhone 解绑手机号
+func (h *AuthHandler) UnbindPhone(c *gin.Context) {
+	userID, userExists := c.Get("user_id")
+	adminID, adminExists := c.Get("admins_id")
+	role, _ := c.Get("role")
+	
+	// 根据角色确定使用哪个ID
+	var targetID int
+	if roleInt, ok := role.(int); ok && roleInt > 0 {
+		// 管理端用户
+		if !adminExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = adminID.(int)
+	} else {
+		// 普通用户
+		if !userExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = userID.(int)
+	}
+
+	var req model.UnbindPhoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("解绑手机号参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.authService.UnbindPhone(targetID, &req); err != nil {
+		logger.Warn("解绑手机号失败", zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "解绑成功", nil)
+}
+
+// UnbindEmail 解绑邮箱
+func (h *AuthHandler) UnbindEmail(c *gin.Context) {
+	userID, userExists := c.Get("user_id")
+	adminID, adminExists := c.Get("admins_id")
+	role, _ := c.Get("role")
+	
+	// 根据角色确定使用哪个ID
+	var targetID int
+	if roleInt, ok := role.(int); ok && roleInt > 0 {
+		// 管理端用户
+		if !adminExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = adminID.(int)
+	} else {
+		// 普通用户
+		if !userExists {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		targetID = userID.(int)
+	}
+
+	var req model.UnbindEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("解绑邮箱参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	if err := h.authService.UnbindEmail(targetID, &req); err != nil {
+		logger.Warn("解绑邮箱失败", zap.Error(err))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	response.SuccessWithMessage(c, "解绑成功", nil)
+}

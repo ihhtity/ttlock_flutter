@@ -226,4 +226,99 @@ class LocalCache {
   static bool getAgreeTermsStatus() {
     return getBool('agree_terms_accepted') ?? false;
   }
+  
+  // ==================== 用户信息缓存 ====================
+  
+  /// 保存用户信息（JSON字符串）
+  static Future<bool> saveUserInfo(Map<String, dynamic> userInfo) async {
+    // 将 Map 转换为 JSON 字符串存储
+    try {
+      final jsonString = _mapToJson(userInfo);
+      return setString('user_info', jsonString);
+    } catch (e) {
+      print('保存用户信息失败: $e');
+      return false;
+    }
+  }
+  
+  /// 获取用户信息
+  static Map<String, dynamic>? getUserInfo() {
+    try {
+      final jsonString = getString('user_info');
+      if (jsonString != null && jsonString.isNotEmpty) {
+        return _jsonToMap(jsonString);
+      }
+    } catch (e) {
+      print('获取用户信息失败: $e');
+    }
+    return null;
+  }
+  
+  /// 清除用户信息
+  static Future<bool> clearUserInfo() async {
+    return remove('user_info');
+  }
+  
+  /// 简单的 Map 转 JSON 字符串（不使用 dart:convert 避免依赖）
+  static String _mapToJson(Map<String, dynamic> map) {
+    final pairs = <String>[];
+    map.forEach((key, value) {
+      String jsonValue;
+      if (value == null) {
+        jsonValue = 'null';
+      } else if (value is String) {
+        jsonValue = '"${value.replaceAll('"', '\\"')}"';
+      } else if (value is num || value is bool) {
+        jsonValue = value.toString();
+      } else {
+        jsonValue = '"$value"';
+      }
+      pairs.add('"$key":$jsonValue');
+    });
+    return '{${pairs.join(',')}}';
+  }
+  
+  /// 简单的 JSON 字符串转 Map
+  static Map<String, dynamic> _jsonToMap(String jsonString) {
+    final result = <String, dynamic>{};
+    // 移除最外层的花括号
+    final content = jsonString.trim();
+    if (content.startsWith('{') && content.endsWith('}')) {
+      final inner = content.substring(1, content.length - 1);
+      // 简单解析键值对（不支持嵌套对象和数组）
+      final regex = RegExp(r'"([^"]+)":("[^"]*"|[^,}]+)');
+      final matches = regex.allMatches(inner);
+      for (final match in matches) {
+        final key = match.group(1)!;
+        var value = match.group(2)!;
+        
+        // 处理字符串值
+        if (value.startsWith('"') && value.endsWith('"')) {
+          value = value.substring(1, value.length - 1);
+          value = value.replaceAll('\\"', '"');
+          result[key] = value;
+        } 
+        // 处理数字值
+        else if (value.contains('.')) {
+          result[key] = double.tryParse(value);
+        } 
+        // 处理整数值
+        else if (int.tryParse(value) != null) {
+          result[key] = int.parse(value);
+        } 
+        // 处理布尔值
+        else if (value == 'true') {
+          result[key] = true;
+        } 
+        else if (value == 'false') {
+          result[key] = false;
+        } 
+        // 处理 null
+        else if (value == 'null') {
+          result[key] = null;
+        }
+      }
+    }
+    return result;
+  }
 }

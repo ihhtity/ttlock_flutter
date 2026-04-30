@@ -76,6 +76,16 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		authorized := v1.Group("")
 		authorized.Use(middleware.Auth())
 		{
+			// 用户个人信息路由
+			authHandler := handler.NewAuthHandler()
+			authorized.PUT("/user/profile", authHandler.UpdateProfile)
+			authorized.POST("/user/bind-phone", authHandler.BindPhone)
+			authorized.POST("/user/bind-email", authHandler.BindEmail)
+			authorized.POST("/user/change-phone", authHandler.ChangePhone)
+			authorized.POST("/user/change-email", authHandler.ChangeEmail)
+			authorized.POST("/user/unbind-phone", authHandler.UnbindPhone)
+			authorized.POST("/user/unbind-email", authHandler.UnbindEmail)
+
 			// 设备路由
 			deviceHandler := handler.NewDeviceHandler()
 			authorized.GET("/devices", deviceHandler.List)

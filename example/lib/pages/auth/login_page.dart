@@ -12,7 +12,7 @@ import 'register_page.dart';
 import 'forgot_password_page.dart';
 import 'terms_pages.dart';
 import '../admin/rooms/room_management_page.dart';
-import '../user/self_service_page.dart';
+import '../user/service/self_service_page.dart';
 
 /// 登录页面
 class LoginPage extends StatefulWidget {

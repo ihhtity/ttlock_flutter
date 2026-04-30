@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../theme.dart';
 import '../../../utils/auth_service.dart';
+import '../../../utils/local_cache.dart';
+import '../../../utils/api_client.dart';
 import '../rooms/room_management_page.dart';
 import '../../auth/login_entry_page.dart';
 import 'account/personal_info_page.dart';
@@ -34,13 +36,13 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  // 模拟用户数据
-  final Map<String, dynamic> _userData = {
-    'nickname': '19874947494', // 默认为注册手机号或邮箱
-    'phone': '19874947494',
-    'email': 'zhangsan@example.com',
-    'phoneBound': true,
-    'emailBound': true,
+  // 用户数据（从缓存加载）
+  Map<String, dynamic> _userData = {
+    'nickname': '管理员',
+    'phone': null,
+    'email': null,
+    'phoneBound': false,
+    'emailBound': false,
     'avatar': null,
     'country': '中国',
     'countryCode': '+86',
@@ -50,6 +52,31 @@ class _ProfilePageState extends State<ProfilePage> {
   int _unreadMessageCount = 3;
 
   int _selectedIndex = 1;
+  
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+  
+  /// 加载用户信息（从缓存）
+  void _loadUserInfo() {
+    final userInfo = LocalCache.getUserInfo();
+    if (userInfo != null) {
+      setState(() {
+        _userData = {
+          'nickname': userInfo['nickname'] ?? '管理员',
+          'phone': userInfo['phone'],
+          'email': userInfo['email'],
+          'phoneBound': userInfo['phone'] != null && userInfo['phone'].toString().isNotEmpty,
+          'emailBound': userInfo['email'] != null && userInfo['email'].toString().isNotEmpty,
+          'avatar': userInfo['avatar'],
+          'country': userInfo['country'] ?? '中国',
+          'countryCode': userInfo['country_code'] ?? '+86',
+        };
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -161,6 +188,8 @@ class _ProfilePageState extends State<ProfilePage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
+          if (index == _selectedIndex) return; // 如果点击当前页面，不执行任何操作
+          
           setState(() {
             _selectedIndex = index;
           });
@@ -175,6 +204,7 @@ class _ProfilePageState extends State<ProfilePage> {
               (route) => false,
             );
           }
+          // index == 1 是当前页面（我的），不需要跳转
         },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppTheme.primaryColor,
@@ -249,7 +279,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _userData['nickname'],
+                    _userData['nickname'] ?? '管理员',
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -257,22 +287,34 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  if (_userData['phoneBound'])
+                  // 只显示已绑定的手机号
+                  if (_userData['phoneBound'] ?? false)
                     Text(
-                      _userData['phone'],
+                      _userData['phone'] ?? '',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
                       ),
                     ),
-                  if (_userData['emailBound'] && _userData['phoneBound'])
+                  // 如果手机号和邮箱都已绑定，添加间距
+                  if ((_userData['emailBound'] ?? false) && (_userData['phoneBound'] ?? false))
                     const SizedBox(height: 4),
-                  if (_userData['emailBound'])
+                  // 只显示已绑定的邮箱
+                  if (_userData['emailBound'] ?? false)
                     Text(
-                      _userData['email'],
+                      _userData['email'] ?? '',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white.withOpacity(0.9),
+                      ),
+                    ),
+                  // 如果都没有绑定，显示提示
+                  if (!(_userData['phoneBound'] ?? false) && !(_userData['emailBound'] ?? false))
+                    Text(
+                      '点击完善个人信息',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.white.withOpacity(0.7),
                       ),
                     ),
                 ],
@@ -427,9 +469,13 @@ class _ProfilePageState extends State<ProfilePage> {
           // 确定按钮
           Expanded(
             child: ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
-                // 清除登录状态，跳转到登录选择页面
+                // 清除登录状态和用户信息
+                await LocalCache.saveLoginStatus(false);
+                await LocalCache.clearUserInfo();
+                HttpClient.setToken('');
+                // 跳转到登录选择页面
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
                     builder: (context) => const LoginEntryPage(),

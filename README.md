@@ -681,7 +681,9 @@ redis:
 - ✅ `admin/` - 管理端专用页面
   - ✅ `admin/profile/` - 管理端个人中心
   - ✅ `admin/rooms/` - 管理端房间管理
-- ✅ `user/` - 用户端专用页面（待开发）
+- ✅ `user/` - 用户端专用页面
+  - ✅ `user/profile/` - 用户端个人中心
+  - ✅ `user/service/` - 用户端自助服务
 
 **路径修复：**
 - ✅ 批量修复 admin 目录下所有文件的导入路径
@@ -691,6 +693,398 @@ redis:
 - ✅ `../profile/` → `../profile/` (同级目录引用)
 - ✅ 保持 UTF-8 编码格式不变
 - ✅ 删除 main.dart 中未使用的导入
+
+#### 2026-04-30 - 用户端个人信息页面开发
+**功能实现：**
+- ✅ 创建用户端个人信息页面 `example/lib/pages/user/profile/user_personal_info_page.dart`
+- ✅ 从登录账号获取真实数据（UserModel）
+- ✅ 手机号/邮箱未绑定时显示"未绑定"
+- ✅ 手机号/邮箱换绑需要验证码和登录密码验证
+- ✅ 支持昵称修改、密码重置功能
+
+**页面功能：**
+- 📱 **昵称设置**：可编辑修改用户昵称
+- 📞 **手机号管理**：
+  - 未绑定：点击绑定，需输入手机号+验证码+登录密码
+  - 已绑定：可更换或解绑，需验证码+登录密码验证
+- 📧 **邮箱管理**：
+  - 未绑定：点击绑定，需输入邮箱+验证码+登录密码
+  - 已绑定：可更换或解绑，需验证码+登录密码验证
+- 🔒 **密码重置**：需输入当前密码+新密码+确认新密码
+
+**技术实现：**
+- ✅ 使用 UserModel 从 AuthService 获取真实用户数据
+- ✅ 所有敏感操作（绑定/换绑/解绑）都需要验证码+登录密码双重验证
+- ✅ 对话框采用 StatefulBuilder 支持加载状态显示
+- ✅ 发送验证码按钮独立控制，防止重复发送
+- ✅ 完善的表单验证和错误提示
+- ✅ TODO 标记后端 API 集成点
+
+**UI 特性：**
+- 🎨 列表式布局，清晰展示各项信息
+- 🎨 已绑定项显示 PopupMenuButton 提供更多操作
+- 🎨 未绑定项直接点击进入绑定流程
+- 🎨 加载状态使用 CircularProgressIndicator
+- 🎨 成功/失败操作都有 SnackBar 提示
+
+**集成到个人中心：**
+- ✅ 更新 `example/lib/pages/user/profile/profile_page.dart`
+- ✅ 点击个人基本信息卡片跳转到个人信息页面
+- ✅ 导航栏标题居中显示
+- ✅ 删除“个人资料”菜单项
+- ✅ 借鉴管理端个人中心的布局风格
+
+**与后端对接说明：**
+- 📌 需要后端提供以下 API：
+  - GET `/api/v1/user/profile` - 获取用户信息
+  - POST `/api/v1/user/update-nickname` - 更新昵称
+  - POST `/api/v1/user/bind-phone` - 绑定手机号（phone, code, password）
+  - POST `/api/v1/user/change-phone` - 更换手机号（phone, code, password）
+  - POST `/api/v1/user/unbind-phone` - 解绑手机号（password）
+  - POST `/api/v1/user/bind-email` - 绑定邮箱（email, code, password）
+  - POST `/api/v1/user/change-email` - 更换邮箱（email, code, password）
+  - POST `/api/v1/user/unbind-email` - 解绑邮箱（password）
+  - POST `/api/v1/user/reset-password` - 重置密码（current_password, new_password）
+  - POST `/api/v1/auth/send-code` - 发送验证码（已存在，type=3绑定手机，type=4绑定邮箱）
+
+#### 2026-04-30 - 登录成功后缓存用户信息
+**功能实现：**
+- ✅ 管理端和用户端登录成功后，自动缓存后端返回的完整用户信息
+- ✅ 使用 LocalCache 保存用户信息（JSON格式）
+- ✅ 其他页面可从缓存中读取用户信息使用
+- ✅ 退出登录时自动清除缓存的用户信息
+
+**技术实现：**
+- ✅ `example/lib/utils/local_cache.dart`
+  - 新增 `saveUserInfo()` - 保存用户信息（Map转JSON字符串）
+  - 新增 `getUserInfo()` - 获取用户信息（JSON字符串转Map）
+  - 新增 `clearUserInfo()` - 清除用户信息
+  - 实现简单的 JSON 序列化/反序列化（不依赖 dart:convert）
+  
+- ✅ `example/lib/utils/auth_service.dart`
+  - 登录成功后调用 `LocalCache.saveUserInfo()` 缓存用户信息
+  - 同时保存登录状态、用户ID、手机号等关键信息
+  - 添加调试日志：“💾 用户信息已缓存到本地”
+  
+- ✅ `example/lib/pages/user/profile/profile_page.dart`
+  - 在 `initState()` 中从缓存加载用户信息
+  - 根据缓存数据显示昵称、手机号、邮箱
+  - 未绑定时显示“未绑定手机/邮箱”
+  
+- ✅ `example/lib/pages/admin/profile/profile_page.dart`
+  - 退出登录时清除缓存的用户信息
+  
+- ✅ `example/lib/pages/user/profile/profile_page.dart`
+  - 退出登录时清除缓存的用户信息
+
+**缓存数据结构：**
+```json
+{
+  "id": 1,
+  "phone": "13800138000",
+  "email": "user@example.com",
+  "nickname": "张三",
+  "avatar": null,
+  "role": 2
+}
+```
+
+**使用场景：**
+- 📱 个人中心显示用户基本信息
+- 📝 个人信息页面展示和编辑
+- 🔐 其他需要用户信息的页面
+- 🚪 退出登录时自动清除
+
+**优势：**
+- ✅ 避免重复请求后端获取用户信息
+- ✅ 提升页面加载速度
+- ✅ 支持离线查看用户信息
+- ✅ 统一管理用户数据
+
+#### 2026-04-30 - 个人中心和信息页面优化（第一阶段）
+**功能实现：**
+- ✅ 用户端和管理端个人中心从缓存加载真实用户信息
+- ✅ 用户端个人信息页面完全重构，使用 Map 存储数据
+- ✅ 用户端添加国家/地区选择UI
+- ✅ **实现完整的国家选择器功能** - 集成 CountrySelectorPage
+- ✅ 所有绑定/换绑操作需要验证码+登录密码双重验证
+- ✅ 未绑定手机号/邮箱时显示“未绑定”
+- ✅ **优化基本信息卡片显示逻辑** - 只显示已绑定的手机号或邮箱
+- ✅ **管理端删除安全问题功能** - 完整移除安全问题相关代码
+- ✅ **修复导入路径错误** - 修正用户端国家选择器导入路径
+
+**修改文件：**
+
+1. **用户端个人中心** (`example/lib/pages/user/profile/profile_page.dart`)
+   - ✅ 已实现从 LocalCache.getUserInfo() 加载真实数据
+   - ✅ 显示真实的昵称、手机号、邮箱
+   - ✅ **优化显示逻辑**：
+     - 只展示已绑定的手机号
+     - 只展示已绑定的邮箱
+     - 如果两者都未绑定，显示“点击完善个人信息”
+     - 如果两者都已绑定，自动添加间距
+
+2. **用户端个人信息页面** (`example/lib/pages/user/profile/user_personal_info_page.dart`)
+   - ✅ 导入 local_cache.dart、country_model.dart、country_selector_page.dart
+   - ✅ **修复导入路径** - 从 `../../../auth/` 改为 `../../auth/`
+   - ✅ 数据结构从 UserModel 改为 Map<String, dynamic>
+   - ✅ 添加 _updateUserInfo() 方法更新缓存
+   - ✅ 添加 _findCountryByCode() 辅助方法
+   - ✅ 昵称编辑：使用 _userInfo 和 _updateUserInfo
+   - ✅ 手机号部分：
+     - 显示逻辑改用 _userInfo
+     - **绑定对话框集成完整的国家选择器**：
+       - 点击国家/地区区域打开 CountrySelectorPage
+       - 显示国家名称和区号（如：中国 (+86)）
+       - 选择后实时更新 selectedCountryCode 和 selectedCountryName
+       - 使用 context.mounted 确保安全性
+     - 绑定成功后更新缓存：`await _updateUserInfo({'phone': phone, 'country_code': code})`
+     - 更换手机号：`await _updateUserInfo({'phone': newPhone})`
+     - 解绑手机号：`await _updateUserInfo({'phone': null})`
+   - ✅ 邮箱部分：
+     - 显示逻辑改用 _userInfo
+     - 绑定成功后更新缓存：`await _updateUserInfo({'email': email})`
+     - 更换邮箱：`await _updateUserInfo({'email': newEmail})`
+     - 解绑邮箱：`await _updateUserInfo({'email': null})`
+   - ✅ 重置密码：保持不变（需调用后端API）
+   - ✅ 所有 `_currentUser` 引用已清除（grep确认0处）
+   - ✅ flutter analyze 无错误
+
+3. **管理端个人中心** (`example/lib/pages/admin/profile/profile_page.dart`)
+   - ✅ 导入 local_cache.dart
+   - ✅ 添加 _loadUserInfo() 方法从缓存加载数据
+   - ✅ 在 initState() 中调用 _loadUserInfo()
+   - ✅ 修改 _userData 初始化逻辑为可变的 Map
+   - ✅ 显示真实的昵称、手机号、邮箱、国家/地区
+   - ✅ **优化显示逻辑**：
+     - 只展示已绑定的手机号
+     - 只展示已绑定的邮箱
+     - 如果两者都未绑定，显示“点击完善个人信息”
+     - 如果两者都已绑定，自动添加间距
+
+4. **管理端个人信息页面** (`example/lib/pages/admin/profile/account/personal_info_page.dart`)
+   - ✅ **删除安全问题数据** - 移除 `_securityQuestions` 变量
+   - ✅ **删除安全问题初始化** - 移除 initState 中的加载逻辑
+   - ✅ **删除安全问题UI** - 移除 build 中的渲染调用
+   - ✅ **删除安全问题方法** - 移除 `_buildSecurityQuestionSection()` 和 `_setSecurityQuestion()`
+   - ✅ **删除安全问题设置页面** - 完整移除 `_SecurityQuestionSettingPage` 类（约300行代码）
+   - ✅ 保留其他功能：昵称、手机号、邮箱、重置密码、国家/地区
+   - ✅ flutter analyze 无错误
+
+**技术要点：**
+- 📦 使用 LocalCache 统一管理用户数据
+- 🔄 数据更新后自动同步到缓存
+- 🌍 **用户端国家/地区选择器完整实现** - 集成 CountrySelectorPage，支持全球200+国家
+- 🔐 所有敏感操作都需要验证码+登录密码
+- 📱 未绑定状态清晰提示
+- 🗑️ 管理端已删除安全问题功能，简化账户设置流程
+
+**待完成：**
+- ⏳ 后端 API 集成（当前使用 Future.delayed 模拟）
+
+#### 2026-04-30 - 优化个人信息页面（第二阶段）
+**功能优化：**
+- ✅ 用户基本信息展示由登录获取后端数据的真实展示
+- ✅ 手机号、邮箱不能同时解绑（后端验证）
+- ✅ 手机号或者邮箱换绑需要验证码和登录密码
+- ✅ 绑定则不需要登录密码，只需要验证码
+- ✅ 用户端在重置密码下面添加国家/地区选择
+
+**后端修改：**
+- ✅ `backend/internal/model/user.go`
+  - 新增 UpdateProfileRequest、BindPhoneRequest、BindEmailRequest
+  - 新增 ChangePhoneRequest、ChangeEmailRequest
+  - 新增 UnbindPhoneRequest、UnbindEmailRequest
+  
+- ✅ `backend/internal/repository/user_repo.go`
+  - 新增 UpdateNickname 方法：更新昵称
+  - 新增 UpdatePhone 方法：更新手机号
+  - 新增 UpdateEmail 方法：更新邮箱
+  - 新增 UnbindPhone 方法：解绑手机号
+  - 新增 UnbindEmail 方法：解绑邮箱
+  - 新增 FindByID 方法：根据ID查找用户
+  
+- ✅ `backend/internal/repository/verification_repo.go`
+  - 新增 VerifyAndMarkAsUsed 方法：验证验证码并标记为已使用
+  
+- ✅ `backend/internal/service/auth_service.go`
+  - 新增 UpdateProfile 方法：更新用户个人信息
+  - 新增 BindPhone 方法：绑定手机号（不需要密码）
+  - 新增 BindEmail 方法：绑定邮箱（不需要密码）
+  - 新增 ChangePhone 方法：更换手机号（需要密码）
+  - 新增 ChangeEmail 方法：更换邮箱（需要密码）
+  - 新增 UnbindPhone 方法：解绑手机号（需要密码，检查不能同时解绑）
+  - 新增 UnbindEmail 方法：解绑邮箱（需要密码，检查不能同时解绑）
+  
+- ✅ `backend/internal/handler/auth_handler.go`
+  - 新增 UpdateProfile handler：PUT /api/v1/user/profile
+  - 新增 BindPhone handler：POST /api/v1/user/bind-phone
+  - 新增 BindEmail handler：POST /api/v1/user/bind-email
+  - 新增 ChangePhone handler：POST /api/v1/user/change-phone
+  - 新增 ChangeEmail handler：POST /api/v1/user/change-email
+  - 新增 UnbindPhone handler：POST /api/v1/user/unbind-phone
+  - 新增 UnbindEmail handler：POST /api/v1/user/unbind-email
+  
+- ✅ `backend/internal/router/router.go`
+  - 注册7个新的用户个人信息API路由
+
+**前端修改：**
+- ✅ `example/lib/pages/user/profile/user_personal_info_page.dart`
+  - 导入 api_client.dart，实现真实API调用
+  - **绑定手机号**：移除密码输入框，只需要手机号+验证码+国家/地区
+  - **更换手机号**：保留密码输入框，需要新手机号+验证码+登录密码
+  - **解绑手机号**：添加密码输入框，需要登录密码验证
+  - **绑定邮箱**：移除密码输入框，只需要邮箱+验证码
+  - **更换邮箱**：保留密码输入框，需要新邮箱+验证码+登录密码
+  - **解绑邮箱**：添加密码输入框，需要登录密码验证
+  - **昵称编辑**：调用后端API更新昵称
+  - **国家/地区选择**：在重置密码下方添加国家/地区选项
+    - 显示当前国家名称和区号
+    - 点击打开 CountrySelectorPage 选择
+    - 选择后调用后端API更新
+  - 所有操作都有加载状态和错误提示
+  - 成功后更新本地缓存
+
+**技术改进：**
+- 🎯 绑定操作简化流程，只需验证码即可
+- 🎯 更换和解绑操作增加安全性，需要密码验证
+- 🎯 后端严格验证手机号和邮箱不能同时解绑
+- 🎯 前端实时同步缓存数据，保证UI一致性
+- 🎯 完整的错误处理和用户反馈
+
+#### 2026-04-30 - 优化管理端个人信息页面
+**功能优化：**
+- ✅ 昵称、重置密码、国家/地区：更新内容同步更新数据库信息
+- ✅ 手机号、邮箱解绑时先判断不能同时为空
+- ✅ 手机号、邮箱换绑需要验证码和登录密码
+- ✅ 手机号、邮箱绑定只需要验证码即可
+
+**前端修改：**
+- ✅ `example/lib/pages/admin/profile/account/personal_info_page.dart`
+  - 导入 api_client.dart，实现真实API调用
+  - **昵称编辑**：调用后端API PUT /user/profile 更新昵称
+  - **重置密码**：调用后端API POST /auth/reset-password 重置密码
+  - **国家/地区选择**：调用后端API PUT /user/profile 更新国家/地区
+  - **手机号绑定**：移除密码输入框，只需手机号+验证码，调用 POST /user/bind-phone
+  - **手机号更换**：保留密码输入框，需要新手机号+验证码+登录密码，调用 POST /user/change-phone
+  - **手机号解绑**：添加密码输入框，检查邮箱是否已绑定，调用 POST /user/unbind-phone
+  - **邮箱绑定**：添加验证码发送，只需邮箱+验证码，调用 POST /user/bind-email
+  - **邮箱更换**：添加验证码和密码验证，需要新邮箱+验证码+登录密码，调用 POST /user/change-email
+  - **邮箱解绑**：添加密码输入框，检查手机号是否已绑定，调用 POST /user/unbind-email
+  - 所有操作都有加载状态和错误提示
+  - 成功后更新本地数据
+
+**技术改进：**
+- 🎯 绑定操作简化流程，只需验证码即可
+- 🎯 更换和解绑操作增加安全性，需要密码验证
+- 🎯 前端严格验证手机号和邮箱不能同时解绑
+- 🎯 实时同步后端数据，保证UI一致性
+- 🎯 完整的错误处理和用户反馈
+- 🎯 与用户端个人信息页面保持一致的交互逻辑
+
+#### 2026-04-30 - 修复绑定操作密码验证问题
+**问题描述：**
+- ❌ 绑定邮箱/手机号时，后端要求密码字段必填，但前端发送空字符串导致400错误
+- ❌ 错误信息：`Key: 'BindEmailRequest.Password' Error:Field validation for 'Password' failed on the 'required' tag`
+
+**修复内容：**
+- ✅ `backend/internal/model/user.go`
+  - 移除 `BindPhoneRequest.Password` 的 `required` 验证标记
+  - 移除 `BindEmailRequest.Password` 的 `required` 验证标记
+  - 添加注释说明绑定时不需要密码
+- ✅ `backend/internal/service/auth_service.go`
+  - 移除 `BindPhone` 方法中的密码验证逻辑
+  - 移除 `BindEmail` 方法中的密码验证逻辑
+  - 添加注释说明绑定时只需要验证码
+
+**技术改进：**
+- 🎯 符合需求规范：绑定操作只需验证码，更换和解绑需要密码
+- 🎯 前后端一致：前端发送空密码，后端不再强制验证
+- 🎯 安全性保持：更换和解绑操作仍然需要密码验证
+
+#### 2026-04-30 - 修复验证码使用逻辑和管理端用户表问题
+**问题描述：**
+1. ❌ 绑定/换绑失败时，验证码已被标记为已使用，无法再次使用
+2. ❌ 管理端修改个人信息时错误地操作了clients表，应该操作admins表
+
+**修复内容：**
+- ✅ `backend/internal/service/auth_service.go`
+  - **BindPhone**: 调整执行顺序，先检查手机号是否被占用，再标记验证码为已使用
+  - **BindEmail**: 调整执行顺序，先检查邮箱是否被占用，再标记验证码为已使用
+  - **ChangePhone**: 调整执行顺序，先检查新手机号是否被占用，再标记验证码为已使用
+  - **ChangeEmail**: 调整执行顺序，先检查新邮箱是否被占用，再标记验证码为已使用
+  - 添加注释说明执行顺序的重要性
+  
+- ✅ `backend/internal/handler/auth_handler.go`
+  - **UpdateProfile**: 根据role判断使用adminID还是userID
+  - **BindPhone**: 根据role判断使用adminID还是userID
+  - **BindEmail**: 根据role判断使用adminID还是userID
+  - **ChangePhone**: 根据role判断使用adminID还是userID
+  - **ChangeEmail**: 根据role判断使用adminID还是userID
+  - **UnbindPhone**: 根据role判断使用adminID还是userID
+  - **UnbindEmail**: 根据role判断使用adminID还是userID
+  - 所有方法都添加了统一的角色判断逻辑
+
+**技术改进：**
+- 🎯 验证码事务优化：先验证所有业务条件，最后才标记验证码为已使用
+- 🎯 失败回滚保障：如果业务检查失败，验证码保持未使用状态，可重复使用
+- 🎯 双端架构完善：管理端操作admins表，用户端操作clients表
+- 🎯 JWT角色识别：通过role字段区分管理端(role>0)和用户端(role=0)
+- 🎯 代码一致性：所有handler方法采用相同的角色判断模式
+**功能实现：**
+- ✅ 优化管理端和用户端的底部导航栏跳转逻辑
+- ✅ 防止重复点击同一标签页导致的不必要操作
+- ✅ 统一使用 `pushAndRemoveUntil` 清理路由栈
+- ✅ 修正管理端房间管理页面的导入路径
+
+**修改文件：**
+
+1. **用户端 - 自助服务页面** (`example/lib/pages/user/service/self_service_page.dart`)
+   - 添加重复点击检测：`if (index == _selectedIndex) return;`
+   - index 0: 服务页面（当前页，不跳转）
+   - index 1: 跳转到个人中心页面
+
+2. **用户端 - 个人中心页面** (`example/lib/pages/user/profile/profile_page.dart`)
+   - 添加重复点击检测：`if (index == _selectedIndex) return;`
+   - 导入 `api_client.dart` 用于退出登录
+   - index 0: 跳转到自助服务页面
+   - index 1: 我的页面（当前页，不跳转）
+
+3. **管理端 - 房间管理页面** (`example/lib/pages/admin/rooms/room_management_page.dart`)
+   - 添加重复点击检测：`if (index == _selectedIndex) return;`
+   - 修正导入路径：从用户端改为管理端 `../profile/profile_page.dart`
+   - 改用 `pushAndRemoveUntil` 替代 `push`，清理路由栈
+   - index 0: 房间页面（当前页，不跳转）
+   - index 1: 跳转到管理端个人中心页面
+
+4. **管理端 - 个人中心页面** (`example/lib/pages/admin/profile/profile_page.dart`)
+   - 添加重复点击检测：`if (index == _selectedIndex) return;`
+   - 退出登录时清除缓存：`LocalCache.clearUserInfo()`
+   - index 0: 跳转到房间管理页面
+   - index 1: 我的页面（当前页，不跳转）
+
+**导航结构：**
+
+**用户端：**
+```
+[服务] ←→ [我的]
+  ↓         ↓
+SelfService  UserProfile
+```
+
+**管理端：**
+```
+[房间] ←→ [我的]
+  ↓         ↓
+RoomManagement  ProfilePage
+```
+
+**优化点：**
+- ✅ 防止重复点击同一标签导致的页面重建
+- ✅ 使用 `pushAndRemoveUntil` 清理路由栈，避免内存泄漏
+- ✅ 统一的导航体验，点击即切换
+- ✅ 修正导入路径错误，确保跳转到正确的页面
+- ✅ 退出登录时彻底清除用户数据和Token
 
 #### 2026-04-30 - 登录页面支持手机号或邮箱登录
 **功能改进：**

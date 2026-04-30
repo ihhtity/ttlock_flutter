@@ -577,23 +577,23 @@ class _RoomManagementPageState extends State<RoomManagementPage> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: (index) {
+          if (index == _selectedIndex) return; // 如果点击当前页面，不执行任何操作
+          
           setState(() {
             _selectedIndex = index;
           });
 
           if (index == 1) {
             // 切换到个人中心
-            Navigator.push(
+            Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
                 builder: (context) => const ProfilePage(),
               ),
-            ).then((_) {
-              setState(() {
-                _selectedIndex = 0;
-              });
-            });
+              (route) => false,
+            );
           }
+          // index == 0 是当前页面（房间），不需要跳转
         },
         type: BottomNavigationBarType.fixed,
         selectedItemColor: AppTheme.primaryColor,

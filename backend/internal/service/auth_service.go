@@ -456,3 +456,280 @@ func (s *AuthService) registerClient(req *model.RegisterRequest) error {
 		zap.String("email", emailStr))
 	return nil
 }
+
+// UpdateProfile 更新用户个人信息
+func (s *AuthService) UpdateProfile(userID int, req *model.UpdateProfileRequest) error {
+	// 查找用户
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		logger.Error("查询用户失败", err, zap.Int("user_id", userID))
+		return errors.New("服务器错误，请稍后重试")
+	}
+	
+	if user == nil {
+		return errors.New("用户不存在")
+	}
+	
+	// 更新昵称
+	if req.Nickname != nil && *req.Nickname != "" {
+		if err := s.userRepo.UpdateNickname(userID, *req.Nickname); err != nil {
+			logger.Error("更新昵称失败", err, zap.Int("user_id", userID))
+			return errors.New("更新昵称失败，请稍后重试")
+		}
+	}
+	
+	// 更新国家/地区
+	if req.Country != nil || req.DialCode != nil {
+		country := user.Country
+		dialCode := user.DialCode
+		
+		if req.Country != nil {
+			country = req.Country
+		}
+		if req.DialCode != nil {
+			dialCode = req.DialCode
+		}
+		
+		if err := s.userRepo.UpdateCountry(userID, country, dialCode); err != nil {
+			logger.Error("更新国家/地区失败", err, zap.Int("user_id", userID))
+			return errors.New("更新国家/地区失败，请稍后重试")
+		}
+	}
+	
+	logger.Info("用户个人信息更新成功", zap.Int("user_id", userID))
+	return nil
+}
+
+// BindPhone 绑定手机号
+func (s *AuthService) BindPhone(userID int, req *model.BindPhoneRequest) error {
+	// 查找用户
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		logger.Error("查询用户失败", err, zap.Int("user_id", userID))
+		return errors.New("服务器错误，请稍后重试")
+	}
+	
+	if user == nil {
+		return errors.New("用户不存在")
+	}
+	
+	// 绑定时不需要验证密码，只需要验证码
+	
+	// 先检查手机号是否已被其他用户使用（在标记验证码之前）
+	existUser, _ := s.userRepo.FindByPhone(req.Phone)
+	if existUser != nil && existUser.ID != userID {
+		return errors.New("该手机号已被其他用户使用")
+	}
+	
+	// 验证验证码（此时才标记为已使用）
+	if err := s.verificationRepo.VerifyAndMarkAsUsed(req.Phone, "", req.Code, 3); err != nil { // 3 = 绑定手机
+		return errors.New("验证码错误或已过期")
+	}
+	
+	// 更新手机号
+	country := req.Country
+	dialCode := req.DialCode
+	if country == "" {
+		country = "CN"
+	}
+	if dialCode == "" {
+		dialCode = "+86"
+	}
+	
+	if err := s.userRepo.UpdatePhone(userID, &req.Phone, &country, &dialCode); err != nil {
+		logger.Error("绑定手机号失败", err, zap.Int("user_id", userID))
+		return errors.New("绑定手机号失败，请稍后重试")
+	}
+	
+	logger.Info("用户绑定手机号成功", zap.Int("user_id", userID), zap.String("phone", req.Phone))
+	return nil
+}
+
+// BindEmail 绑定邮箱
+func (s *AuthService) BindEmail(userID int, req *model.BindEmailRequest) error {
+	// 查找用户
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		logger.Error("查询用户失败", err, zap.Int("user_id", userID))
+		return errors.New("服务器错误，请稍后重试")
+	}
+	
+	if user == nil {
+		return errors.New("用户不存在")
+	}
+	
+	// 绑定时不需要验证密码，只需要验证码
+	
+	// 先检查邮箱是否已被其他用户使用（在标记验证码之前）
+	existUser, _ := s.userRepo.FindByEmail(req.Email)
+	if existUser != nil && existUser.ID != userID {
+		return errors.New("该邮箱已被其他用户使用")
+	}
+	
+	// 验证验证码（此时才标记为已使用）
+	if err := s.verificationRepo.VerifyAndMarkAsUsed("", req.Email, req.Code, 4); err != nil { // 4 = 绑定邮箱
+		return errors.New("验证码错误或已过期")
+	}
+	
+	// 更新邮箱
+	if err := s.userRepo.UpdateEmail(userID, &req.Email); err != nil {
+		logger.Error("绑定邮箱失败", err, zap.Int("user_id", userID))
+		return errors.New("绑定邮箱失败，请稍后重试")
+	}
+	
+	logger.Info("用户绑定邮箱成功", zap.Int("user_id", userID), zap.String("email", req.Email))
+	return nil
+}
+
+// ChangePhone 更换手机号
+func (s *AuthService) ChangePhone(userID int, req *model.ChangePhoneRequest) error {
+	// 查找用户
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		logger.Error("查询用户失败", err, zap.Int("user_id", userID))
+		return errors.New("服务器错误，请稍后重试")
+	}
+	
+	if user == nil {
+		return errors.New("用户不存在")
+	}
+	
+	// 验证密码
+	if !s.userRepo.VerifyPassword(user.Password, req.Password) {
+		return errors.New("密码错误")
+	}
+	
+	// 先检查新手机号是否已被其他用户使用（在标记验证码之前）
+	existUser, _ := s.userRepo.FindByPhone(req.NewPhone)
+	if existUser != nil && existUser.ID != userID {
+		return errors.New("该手机号已被其他用户使用")
+	}
+	
+	// 验证验证码（此时才标记为已使用）
+	if err := s.verificationRepo.VerifyAndMarkAsUsed(req.NewPhone, "", req.Code, 3); err != nil { // 3 = 绑定手机
+		return errors.New("验证码错误或已过期")
+	}
+	
+	// 更新手机号
+	country := req.Country
+	dialCode := req.DialCode
+	if country == "" {
+		country = "CN"
+	}
+	if dialCode == "" {
+		dialCode = "+86"
+	}
+	
+	if err := s.userRepo.UpdatePhone(userID, &req.NewPhone, &country, &dialCode); err != nil {
+		logger.Error("更换手机号失败", err, zap.Int("user_id", userID))
+		return errors.New("更换手机号失败，请稍后重试")
+	}
+	
+	logger.Info("用户更换手机号成功", zap.Int("user_id", userID), zap.String("phone", req.NewPhone))
+	return nil
+}
+
+// ChangeEmail 更换邮箱
+func (s *AuthService) ChangeEmail(userID int, req *model.ChangeEmailRequest) error {
+	// 查找用户
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		logger.Error("查询用户失败", err, zap.Int("user_id", userID))
+		return errors.New("服务器错误，请稍后重试")
+	}
+	
+	if user == nil {
+		return errors.New("用户不存在")
+	}
+	
+	// 验证密码
+	if !s.userRepo.VerifyPassword(user.Password, req.Password) {
+		return errors.New("密码错误")
+	}
+	
+	// 先检查新邮箱是否已被其他用户使用（在标记验证码之前）
+	existUser, _ := s.userRepo.FindByEmail(req.NewEmail)
+	if existUser != nil && existUser.ID != userID {
+		return errors.New("该邮箱已被其他用户使用")
+	}
+	
+	// 验证验证码（此时才标记为已使用）
+	if err := s.verificationRepo.VerifyAndMarkAsUsed("", req.NewEmail, req.Code, 4); err != nil { // 4 = 绑定邮箱
+		return errors.New("验证码错误或已过期")
+	}
+	
+	// 更新邮箱
+	if err := s.userRepo.UpdateEmail(userID, &req.NewEmail); err != nil {
+		logger.Error("更换邮箱失败", err, zap.Int("user_id", userID))
+		return errors.New("更换邮箱失败，请稍后重试")
+	}
+	
+	logger.Info("用户更换邮箱成功", zap.Int("user_id", userID), zap.String("email", req.NewEmail))
+	return nil
+}
+
+// UnbindPhone 解绑手机号
+func (s *AuthService) UnbindPhone(userID int, req *model.UnbindPhoneRequest) error {
+	// 查找用户
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		logger.Error("查询用户失败", err, zap.Int("user_id", userID))
+		return errors.New("服务器错误，请稍后重试")
+	}
+	
+	if user == nil {
+		return errors.New("用户不存在")
+	}
+	
+	// 验证密码
+	if !s.userRepo.VerifyPassword(user.Password, req.Password) {
+		return errors.New("密码错误")
+	}
+	
+	// 检查是否同时解绑了邮箱（不允许同时解绑）
+	if user.Email == nil || *user.Email == "" {
+		return errors.New("手机号和邮箱不能同时解绑，请至少保留一种联系方式")
+	}
+	
+	// 解绑手机号
+	if err := s.userRepo.UnbindPhone(userID); err != nil {
+		logger.Error("解绑手机号失败", err, zap.Int("user_id", userID))
+		return errors.New("解绑手机号失败，请稍后重试")
+	}
+	
+	logger.Info("用户解绑手机号成功", zap.Int("user_id", userID))
+	return nil
+}
+
+// UnbindEmail 解绑邮箱
+func (s *AuthService) UnbindEmail(userID int, req *model.UnbindEmailRequest) error {
+	// 查找用户
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		logger.Error("查询用户失败", err, zap.Int("user_id", userID))
+		return errors.New("服务器错误，请稍后重试")
+	}
+	
+	if user == nil {
+		return errors.New("用户不存在")
+	}
+	
+	// 验证密码
+	if !s.userRepo.VerifyPassword(user.Password, req.Password) {
+		return errors.New("密码错误")
+	}
+	
+	// 检查是否同时解绑了手机号（不允许同时解绑）
+	if user.Phone == nil || *user.Phone == "" {
+		return errors.New("手机号和邮箱不能同时解绑，请至少保留一种联系方式")
+	}
+	
+	// 解绑邮箱
+	if err := s.userRepo.UnbindEmail(userID); err != nil {
+		logger.Error("解绑邮箱失败", err, zap.Int("user_id", userID))
+		return errors.New("解绑邮箱失败，请稍后重试")
+	}
+	
+	logger.Info("用户解绑邮箱成功", zap.Int("user_id", userID))
+	return nil
+}

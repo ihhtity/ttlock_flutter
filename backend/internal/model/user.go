@@ -82,3 +82,52 @@ type UserVO struct {
 	Avatar   *string `json:"avatar"`
 	Role     int     `json:"role,omitempty"`
 }
+
+// UpdateProfileRequest 更新个人信息请求
+type UpdateProfileRequest struct {
+	Nickname *string `json:"nickname"`
+	Country  *string `json:"country"`
+	DialCode *string `json:"dial_code"`
+}
+
+// BindPhoneRequest 绑定手机号请求
+type BindPhoneRequest struct {
+	Phone      string `json:"phone" binding:"required"`
+	Code       string `json:"code" binding:"required"`
+	Password   string `json:"password"` // 绑定时不需要密码
+	Country    string `json:"country"`
+	DialCode   string `json:"dial_code"`
+}
+
+// BindEmailRequest 绑定邮箱请求
+type BindEmailRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Code     string `json:"code" binding:"required"`
+	Password string `json:"password"` // 绑定时不需要密码
+}
+
+// ChangePhoneRequest 更换手机号请求
+type ChangePhoneRequest struct {
+	NewPhone   string `json:"new_phone" binding:"required"`
+	Code       string `json:"code" binding:"required"`
+	Password   string `json:"password" binding:"required"`
+	Country    string `json:"country"`
+	DialCode   string `json:"dial_code"`
+}
+
+// ChangeEmailRequest 更换邮箱请求
+type ChangeEmailRequest struct {
+	NewEmail string `json:"new_email" binding:"required,email"`
+	Code     string `json:"code" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+// UnbindPhoneRequest 解绑手机号请求
+type UnbindPhoneRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
+// UnbindEmailRequest 解绑邮箱请求
+type UnbindEmailRequest struct {
+	Password string `json:"password" binding:"required"`
+}

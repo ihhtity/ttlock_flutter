@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 	"ttlock-backend/internal/database"
 	"ttlock-backend/internal/model"
@@ -119,4 +120,25 @@ func (r *VerificationCodeRepository) ExpireExpiredCodes() error {
 	_, err := db.Exec(query, now, now)
 
 	return err
+}
+
+// VerifyAndMarkAsUsed 验证验证码并标记为已使用
+func (r *VerificationCodeRepository) VerifyAndMarkAsUsed(phone, email string, code string, codeType int) error {
+	// 查找有效的验证码
+	vc, err := r.FindValidCode(phone, email, codeType)
+	if err != nil {
+		return err
+	}
+	
+	if vc == nil {
+		return sql.ErrNoRows
+	}
+	
+	// 验证验证码是否正确
+	if vc.Code != code {
+		return errors.New("验证码错误")
+	}
+	
+	// 标记为已使用
+	return r.MarkAsUsed(vc.ID)
 }

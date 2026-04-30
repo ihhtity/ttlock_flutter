@@ -136,3 +136,84 @@ func (r *UserRepository) UpdateCountry(userID int, country, dialCode *string) er
 	
 	return err
 }
+
+// UpdateNickname 更新昵称
+func (r *UserRepository) UpdateNickname(userID int, nickname string) error {
+	db := database.GetWriteDB()
+	
+	now := time.Now()
+	query := `UPDATE clients SET nickname = ?, updated = ? WHERE id = ?`
+	_, err := db.Exec(query, nickname, now, userID)
+	
+	return err
+}
+
+// UpdatePhone 更新手机号
+func (r *UserRepository) UpdatePhone(userID int, phone, countryCode, dialCode *string) error {
+	db := database.GetWriteDB()
+	
+	now := time.Now()
+	query := `UPDATE clients SET phone = ?, country = ?, dial_code = ?, updated = ? WHERE id = ?`
+	_, err := db.Exec(query, phone, countryCode, dialCode, now, userID)
+	
+	return err
+}
+
+// UpdateEmail 更新邮箱
+func (r *UserRepository) UpdateEmail(userID int, email *string) error {
+	db := database.GetWriteDB()
+	
+	now := time.Now()
+	query := `UPDATE clients SET email = ?, updated = ? WHERE id = ?`
+	_, err := db.Exec(query, email, now, userID)
+	
+	return err
+}
+
+// UnbindPhone 解绑手机号
+func (r *UserRepository) UnbindPhone(userID int) error {
+	db := database.GetWriteDB()
+	
+	now := time.Now()
+	query := `UPDATE clients SET phone = NULL, updated = ? WHERE id = ?`
+	_, err := db.Exec(query, now, userID)
+	
+	return err
+}
+
+// UnbindEmail 解绑邮箱
+func (r *UserRepository) UnbindEmail(userID int) error {
+	db := database.GetWriteDB()
+	
+	now := time.Now()
+	query := `UPDATE clients SET email = NULL, updated = ? WHERE id = ?`
+	_, err := db.Exec(query, now, userID)
+	
+	return err
+}
+
+// FindByID 根据ID查找用户
+func (r *UserRepository) FindByID(userID int) (*model.Client, error) {
+	db := database.GetReadDB()
+	
+	query := `SELECT id, admins_id, phone, email, password, nickname, avatar, 
+	                 country, dial_code, agree_terms, status, last_login, login_count, created, updated 
+	          FROM clients WHERE id = ?`
+	
+	var user model.Client
+	err := db.QueryRow(query, userID).Scan(
+		&user.ID, &user.AdminsID, &user.Phone, &user.Email, &user.Password,
+		&user.Nickname, &user.Avatar, &user.Country, &user.DialCode,
+		&user.AgreeTerms, &user.Status, &user.LastLogin, &user.LoginCount,
+		&user.CreatedAt, &user.UpdatedAt,
+	)
+	
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	
+	return &user, nil
+}

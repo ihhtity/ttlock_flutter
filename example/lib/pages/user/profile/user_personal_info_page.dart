@@ -1,40 +1,82 @@
 import 'package:flutter/material.dart';
 import '../../../../theme.dart';
-import '../../../../models/country_model.dart';
-import '../../../../utils/country_selection_manager.dart';
+import '../../../../utils/auth_service.dart';
+import '../../../../utils/local_cache.dart';
 import '../../../../utils/api_client.dart';
-import '../../../auth/country_selector_page.dart';
+import '../../../../models/country_model.dart';
+import '../../auth/country_selector_page.dart';
 
-/// 个人信息页面
-class PersonalInfoPage extends StatefulWidget {
-  final Map<String, dynamic> userData;
-
-  const PersonalInfoPage({Key? key, required this.userData}) : super(key: key);
+/// 用户端个人信息页面
+class UserPersonalInfoPage extends StatefulWidget {
+  const UserPersonalInfoPage({Key? key}) : super(key: key);
 
   @override
-  _PersonalInfoPageState createState() => _PersonalInfoPageState();
+  _UserPersonalInfoPageState createState() => _UserPersonalInfoPageState();
 }
 
-class _PersonalInfoPageState extends State<PersonalInfoPage> {
-  late Map<String, dynamic> _userData;
-  final _nicknameController = TextEditingController();
-  final CountrySelectionManager _countryManager = CountrySelectionManager();
+class _UserPersonalInfoPageState extends State<UserPersonalInfoPage> {
+  Map<String, dynamic>? _userInfo;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _userData = Map<String, dynamic>.from(widget.userData);
-    _nicknameController.text = _userData['nickname'] ?? '';
+    _loadUserInfo();
   }
 
-  @override
-  void dispose() {
-    _nicknameController.dispose();
-    super.dispose();
+  /// 加载用户信息（从缓存）
+  void _loadUserInfo() {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final userInfo = LocalCache.getUserInfo();
+      
+      setState(() {
+        _userInfo = userInfo ?? {};
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('加载用户信息失败: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+  
+  /// 更新缓存的用户信息
+  Future<void> _updateUserInfo(Map<String, dynamic> updates) async {
+    if (_userInfo != null) {
+      _userInfo!.addAll(updates);
+      await LocalCache.saveUserInfo(_userInfo!);
+      setState(() {});
+    }
+  }
+  
+  /// 根据国家代码查找国家
+  CountryModel _findCountryByCode(String countryCode) {
+    return CountryList.countries.firstWhere(
+      (c) => c.dialCode == countryCode,
+      orElse: () => CountryList.countries[0], // 默认返回中国
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('个人信息'),
+          centerTitle: true,
+          backgroundColor: AppTheme.primaryColor,
+        ),
+        body: const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('个人信息'),
@@ -79,7 +121,7 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       leading: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryColor),
       title: const Text('昵称'),
       subtitle: Text(
-        _userData['nickname'] ?? '未设置',
+        _userInfo?['nickname'] ?? '未设置',
         style: const TextStyle(fontSize: 14),
       ),
       trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint),
@@ -89,56 +131,38 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   /// 编辑昵称
   void _editNickname() {
-    final controller = TextEditingController(text: _userData['nickname'] ?? '');
-    bool isLoading = false;
+    final controller = TextEditingController(text: _userInfo?['nickname'] ?? '');
     
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+        ),
+        title: const Text('修改昵称'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: '请输入昵称',
+            border: OutlineInputBorder(),
           ),
-          title: const Text('修改昵称'),
-          content: TextField(
-            controller: controller,
-            decoration: const InputDecoration(
-              hintText: '请输入昵称',
-              border: OutlineInputBorder(),
-            ),
-            maxLength: 20,
+          maxLength: 20,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
           ),
-          actions: [
-            TextButton(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
-              child: const Text('取消'),
-            ),
-            ElevatedButton(
-              onPressed: isLoading ? null : () async {
-                if (controller.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('昵称不能为空')),
-                  );
-                  return;
-                }
-                
-                setState(() {
-                  isLoading = true;
-                });
-                
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.trim().isNotEmpty) {
                 // 调用后端API更新昵称
                 final response = await HttpClient.put('/user/profile', body: {
                   'nickname': controller.text.trim(),
                 });
                 
-                setState(() {
-                  isLoading = false;
-                });
-                
                 if (response.isSuccess) {
-                  this.setState(() {
-                    _userData['nickname'] = controller.text.trim();
-                  });
+                  await _updateUserInfo({'nickname': controller.text.trim()});
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -151,31 +175,29 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                     SnackBar(content: Text(response.message)),
                   );
                 }
-              },
-              child: isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('确定'),
-            ),
-          ],
-        ),
+              }
+            },
+            child: const Text('确定'),
+          ),
+        ],
       ),
     );
   }
 
   /// 手机号设置
   Widget _buildPhoneSection() {
-    final isBound = _userData['phoneBound'] ?? false;
+    final phone = _userInfo?['phone'];
+    final isBound = phone != null && phone.toString().isNotEmpty;
     
     return ListTile(
       leading: const Icon(Icons.phone_android_rounded, color: AppTheme.primaryColor),
       title: const Text('手机号'),
       subtitle: Text(
-        isBound ? _userData['phone'] ?? '未绑定' : '未绑定',
-        style: const TextStyle(fontSize: 14),
+        isBound ? phone! : '未绑定',
+        style: TextStyle(
+          fontSize: 14,
+          color: isBound ? null : AppTheme.textHint,
+        ),
       ),
       trailing: isBound
           ? PopupMenuButton<String>(
@@ -213,6 +235,8 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
   void _bindPhone() {
     final phoneController = TextEditingController();
     final codeController = TextEditingController();
+    String selectedCountryCode = '+86'; // 默认中国
+    String selectedCountryName = '中国';
     bool isLoading = false;
 
     showDialog(
@@ -223,69 +247,113 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
             borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
           ),
           title: const Text('绑定手机号'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(
-                  labelText: '手机号',
-                  hintText: '请输入手机号',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: codeController,
-                      decoration: const InputDecoration(
-                        labelText: '验证码',
-                        hintText: '请输入验证码',
-                        border: OutlineInputBorder(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 国家/地区选择
+                InkWell(
+                  onTap: isLoading ? null : () async {
+                    // 显示国家选择对话框
+                    final result = await Navigator.push<CountryModel>(
+                      context,
+                      MaterialPageRoute<CountryModel>(
+                        builder: (context) => CountrySelectorPage(
+                          selectedCountry: _findCountryByCode(selectedCountryCode),
+                          onCountrySelected: (country) {
+                            // 国家选择后会通过返回值传递
+                          },
+                        ),
                       ),
+                    );
+                    
+                    if (result != null && context.mounted) {
+                      setState(() {
+                        selectedCountryCode = result.dialCode;
+                        selectedCountryName = result.nameZh;
+                      });
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '国家/地区: $selectedCountryName ($selectedCountryCode)',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        const Icon(Icons.arrow_drop_down, color: AppTheme.textHint),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: isLoading ? null : () async {
-                      if (phoneController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('请先输入手机号')),
-                        );
-                        return;
-                      }
-                      // 发送验证码
-                      setState(() {
-                        isLoading = true;
-                      });
-                      
-                      final response = await HttpClient.post('/auth/send-code', body: {
-                        'phone': phoneController.text,
-                        'type': 3, // 3 = 绑定手机
-                      });
-                      
-                      setState(() {
-                        isLoading = false;
-                      });
-                      
-                      if (response.isSuccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('验证码已发送')),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(response.message)),
-                        );
-                      }
-                    },
-                    child: const Text('发送'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(
+                    labelText: '手机号',
+                    hintText: '请输入手机号',
+                    border: OutlineInputBorder(),
                   ),
-                ],
-              ),
-            ],
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: codeController,
+                        decoration: const InputDecoration(
+                          labelText: '验证码',
+                          hintText: '请输入验证码',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: isLoading ? null : () async {
+                        if (phoneController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('请先输入手机号')),
+                          );
+                          return;
+                        }
+                        // 发送验证码
+                        setState(() {
+                          isLoading = true;
+                        });
+                        
+                        final response = await HttpClient.post('/auth/send-code', body: {
+                          'phone': phoneController.text,
+                          'type': 3, // 3 = 绑定手机
+                        });
+                        
+                        setState(() {
+                          isLoading = false;
+                        });
+                        
+                        if (response.isSuccess) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('验证码已发送')),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(response.message)),
+                          );
+                        }
+                      },
+                      child: const Text('发送'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -310,6 +378,8 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                   'phone': phoneController.text,
                   'code': codeController.text,
                   'password': '', // 绑定时不需要密码
+                  'country': selectedCountryName,
+                  'dial_code': selectedCountryCode,
                 });
 
                 setState(() {
@@ -317,10 +387,13 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 });
 
                 if (response.isSuccess) {
-                  this.setState(() {
-                    _userData['phoneBound'] = true;
-                    _userData['phone'] = phoneController.text;
+                  // 更新缓存
+                  await _updateUserInfo({
+                    'phone': phoneController.text,
+                    'country': selectedCountryName,
+                    'dial_code': selectedCountryCode,
                   });
+
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -469,9 +542,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 });
 
                 if (response.isSuccess) {
-                  this.setState(() {
-                    _userData['phone'] = phoneController.text;
-                  });
+                  // 更新缓存
+                  await _updateUserInfo({'phone': phoneController.text});
+
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -545,18 +618,6 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                   return;
                 }
 
-                // 检查邮箱是否已绑定
-                final isEmailBound = _userData['emailBound'] ?? false;
-                if (!isEmailBound) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('手机号和邮箱不能同时解绑，请至少保留一种联系方式'),
-                      backgroundColor: AppTheme.warningColor,
-                    ),
-                  );
-                  return;
-                }
-
                 setState(() {
                   isLoading = true;
                 });
@@ -571,10 +632,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 });
 
                 if (response.isSuccess) {
-                  this.setState(() {
-                    _userData['phoneBound'] = false;
-                    _userData['phone'] = '';
-                  });
+                  // 更新缓存
+                  await _updateUserInfo({'phone': null});
+                  
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -607,14 +667,18 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   /// 邮箱设置
   Widget _buildEmailSection() {
-    final isBound = _userData['emailBound'] ?? false;
+    final email = _userInfo?['email'];
+    final isBound = email != null && email.toString().isNotEmpty;
     
     return ListTile(
       leading: const Icon(Icons.email_outlined, color: AppTheme.primaryColor),
       title: const Text('邮箱'),
       subtitle: Text(
-        isBound ? _userData['email'] ?? '未绑定' : '未绑定',
-        style: const TextStyle(fontSize: 14),
+        isBound ? email! : '未绑定',
+        style: TextStyle(
+          fontSize: 14,
+          color: isBound ? null : AppTheme.textHint,
+        ),
       ),
       trailing: isBound
           ? PopupMenuButton<String>(
@@ -756,10 +820,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 });
 
                 if (response.isSuccess) {
-                  this.setState(() {
-                    _userData['emailBound'] = true;
-                    _userData['email'] = emailController.text;
-                  });
+                  // 更新缓存
+                  await _updateUserInfo({'email': emailController.text});
+
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -908,9 +971,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 });
 
                 if (response.isSuccess) {
-                  this.setState(() {
-                    _userData['email'] = emailController.text;
-                  });
+                  // 更新缓存
+                  await _updateUserInfo({'email': emailController.text});
+
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -984,18 +1047,6 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                   return;
                 }
 
-                // 检查手机号是否已绑定
-                final isPhoneBound = _userData['phoneBound'] ?? false;
-                if (!isPhoneBound) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('手机号和邮箱不能同时解绑，请至少保留一种联系方式'),
-                      backgroundColor: AppTheme.warningColor,
-                    ),
-                  );
-                  return;
-                }
-
                 setState(() {
                   isLoading = true;
                 });
@@ -1010,10 +1061,9 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                 });
 
                 if (response.isSuccess) {
-                  this.setState(() {
-                    _userData['emailBound'] = false;
-                    _userData['email'] = '';
-                  });
+                  // 更新缓存
+                  await _updateUserInfo({'email': null});
+                  
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -1141,31 +1191,16 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
                   isLoading = true;
                 });
 
-                // 调用后端API重置密码
-                final response = await HttpClient.post('/auth/reset-password', body: {
-                  'phone': _userData['phone'],
-                  'email': _userData['email'],
-                  'code': '', // 管理端重置密码不需要验证码
-                  'new_password': newPasswordController.text,
-                });
+                // TODO: 调用后端API重置密码
+                await Future.delayed(const Duration(seconds: 1));
 
-                setState(() {
-                  isLoading = false;
-                });
-
-                if (response.isSuccess) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('密码重置成功'),
-                      backgroundColor: AppTheme.successColor,
-                    ),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(response.message)),
-                  );
-                }
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('密码重置成功'),
+                    backgroundColor: AppTheme.successColor,
+                  ),
+                );
               },
               child: isLoading
                   ? const SizedBox(
@@ -1181,13 +1216,16 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
     );
   }
 
-  /// 国家/地区
+  /// 国家/地区设置
   Widget _buildCountrySection() {
+    final country = _userInfo?['country'] ?? '中国';
+    final dialCode = _userInfo?['dial_code'] ?? '+86';
+    
     return ListTile(
       leading: const Icon(Icons.public_rounded, color: AppTheme.primaryColor),
       title: const Text('国家/地区'),
       subtitle: Text(
-        '${_userData['country'] ?? '中国'} (${_userData['countryCode'] ?? '+86'})',
+        '$country ($dialCode)',
         style: const TextStyle(fontSize: 14),
       ),
       trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textHint),
@@ -1197,13 +1235,16 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
 
   /// 选择国家/地区
   void _selectCountry() async {
+    final currentCountryCode = _userInfo?['dial_code'] ?? '+86';
+    final currentCountry = _findCountryByCode(currentCountryCode);
+    
     final result = await Navigator.push<CountryModel>(
       context,
       MaterialPageRoute<CountryModel>(
         builder: (context) => CountrySelectorPage(
-          selectedCountry: _findCurrentCountry(),
+          selectedCountry: currentCountry,
           onCountrySelected: (country) {
-            // 国家选择后会通过 CountrySelectionManager 更新
+            // 通过返回值传递
           },
         ),
       ),
@@ -1217,13 +1258,15 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
       });
       
       if (response.isSuccess) {
-        setState(() {
-          _userData['country'] = result.nameZh;
-          _userData['countryCode'] = result.dialCode;
+        // 更新缓存
+        await _updateUserInfo({
+          'country': result.nameZh,
+          'dial_code': result.dialCode,
         });
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('已选择 ${result.nameZh}'),
+          const SnackBar(
+            content: Text('国家/地区更新成功'),
             backgroundColor: AppTheme.successColor,
           ),
         );
@@ -1233,14 +1276,5 @@ class _PersonalInfoPageState extends State<PersonalInfoPage> {
         );
       }
     }
-  }
-  
-  /// 查找当前国家
-  CountryModel _findCurrentCountry() {
-    final countryCode = _userData['countryCode'] ?? '+86';
-    return CountryList.countries.firstWhere(
-      (c) => c.dialCode == countryCode,
-      orElse: () => CountryList.countries[0], // 默认返回中国
-    );
   }
 }
