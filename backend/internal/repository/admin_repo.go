@@ -5,7 +5,6 @@ import (
 	"time"
 	"ttlock-backend/internal/database"
 	"ttlock-backend/internal/model"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // AdminRepository 管理员数据访问
@@ -54,10 +53,9 @@ func (r *AdminRepository) UpdateLastLogin(adminID int) error {
 	return err
 }
 
-// VerifyPassword 验证密码
-func (r *AdminRepository) VerifyPassword(hashedPassword, password string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	return err == nil
+// VerifyPassword 验证密码（明文对比）
+func (r *AdminRepository) VerifyPassword(storedPassword, password string) bool {
+	return storedPassword == password
 }
 
 // FindByPhone 根据手机号查找管理员
@@ -118,18 +116,13 @@ func (r *AdminRepository) FindByEmail(email string) (*model.Admin, error) {
 func (r *AdminRepository) Create(admin *model.Admin, password string) error {
 	db := database.GetWriteDB()
 	
-	// 加密密码
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	
+	// 明文存储密码（仅用于开发调试）
 	now := time.Now()
 	query := `INSERT INTO admins (username, password, real_name, phone, email, status, agree_terms, created, updated) 
 	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	
 	result, err := db.Exec(query, 
-		admin.Username, string(hashedPassword), admin.RealName,
+		admin.Username, password, admin.RealName,
 		admin.Phone, admin.Email, admin.Status, admin.AgreeTerms,
 		now, now)
 	
@@ -141,6 +134,18 @@ func (r *AdminRepository) Create(admin *model.Admin, password string) error {
 	if err == nil {
 		admin.ID = int(id)
 	}
+	
+	return err
+}
+
+// UpdatePassword 更新管理员密码（明文存储）
+func (r *AdminRepository) UpdatePassword(adminID int, newPassword string) error {
+	db := database.GetWriteDB()
+	
+	// 明文存储密码（仅用于开发调试）
+	now := time.Now()
+	query := `UPDATE admins SET password = ?, updated = ? WHERE id = ?`
+	_, err := db.Exec(query, newPassword, now, adminID)
 	
 	return err
 }

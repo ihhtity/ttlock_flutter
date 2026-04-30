@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../l10n/app_localizations.dart';
-import '../../models/country_model.dart';
 import '../../theme.dart';
 import '../../utils/country_selection_manager.dart';
 import '../../utils/auth_service.dart';
@@ -30,12 +30,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _verificationCodeController = TextEditingController();
-  final _newPasswordController = TextEditingController();
   
   final CountrySelectionManager _countryManager = CountrySelectionManager();
   RecoveryMethod _recoveryMethod = RecoveryMethod.phone;
   bool _isLoading = false;
   int _countdown = 0;
+  String? _retrievedPassword; // 找回的密码
+  bool _isPasswordVisible = false; // 密码是否可见
 
   @override
   void initState() {
@@ -50,7 +51,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     _phoneController.dispose();
     _emailController.dispose();
     _verificationCodeController.dispose();
-    _newPasswordController.dispose();
     super.dispose();
   }
 
@@ -67,42 +67,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     return emailRegex.hasMatch(email);
   }
 
-  /// 验证密码强度
-  /// 要求：8-20位，至少包含数字/字母/符号中的两位
-  String? _validatePassword(String? value) {
-    final l10n = AppLocalizations.of(context);
-    
-    if (value == null || value.isEmpty) {
-      return l10n.pleaseEnterPassword;
-    }
-    
-    // 检查长度
-    if (value.length < 8 || value.length > 20) {
-      return l10n.passwordLengthError;
-    }
-    
-    // 检查是否包含数字
-    bool hasDigit = RegExp(r'\d').hasMatch(value);
-    // 检查是否包含字母
-    bool hasLetter = RegExp(r'[a-zA-Z]').hasMatch(value);
-    // 检查是否包含符号
-    bool hasSymbol = RegExp(r"[^\w\s]").hasMatch(value);
-    
-    // 统计包含的字符类型数量
-    int typeCount = 0;
-    if (hasDigit) typeCount++;
-    if (hasLetter) typeCount++;
-    if (hasSymbol) typeCount++;
-    
-    // 至少需要包含两种类型
-    if (typeCount < 2) {
-      return l10n.passwordComplexityError;
-    }
-    
-    return null;
-  }
-
-  /// 发送验证码
+  /// 找回密码
   Future<void> _sendVerificationCode() async {
     // 验证输入
     if (_recoveryMethod == RecoveryMethod.phone) {
@@ -207,44 +172,49 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     }
   }
 
-  /// 重置密码
-  Future<void> _resetPassword() async {
+  /// 找回密码
+  Future<void> _retrievePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
     
     try {
-      debugPrint('🔄 ========== 开始重置密码 ==========');
+      debugPrint('🔑 ========== 开始找回密码 ==========');
       debugPrint('   - 找回方式: ${_recoveryMethod == RecoveryMethod.phone ? "手机号" : "邮箱"}');
       debugPrint('   - Phone: ${_recoveryMethod == RecoveryMethod.phone ? _phoneController.text.trim() : "null"}');
       debugPrint('   - Email: ${_recoveryMethod == RecoveryMethod.email ? _emailController.text.trim() : "null"}');
+      debugPrint('   - LoginType: ${widget.loginType}');
       
-      // 调用后端 API 重置密码
-      final response = await AuthService.resetPassword(
+      // 调用后端 API 找回密码
+      final response = await AuthService.retrievePassword(
         phone: _recoveryMethod == RecoveryMethod.phone ? _phoneController.text.trim() : null,
         email: _recoveryMethod == RecoveryMethod.email ? _emailController.text.trim() : null,
         code: _verificationCodeController.text.trim(),
-        newPassword: _newPasswordController.text,
+        loginType: widget.loginType,
       );
 
       if (!mounted) return;
 
       setState(() => _isLoading = false);
 
-      if (response.isSuccess) {
-        debugPrint('✅ 密码重置成功');
+      if (response.isSuccess && response.data != null) {
+        debugPrint('✅ 密码找回成功');
         debugPrint('=====================================');
         
-        final l10n = AppLocalizations.of(context);
+        // 显示密码
+        setState(() {
+          _retrievedPassword = response.data;
+        });
+        
+        // 显示成功提示
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(l10n.passwordResetSuccess),
+          const SnackBar(
+            content: Text('密码找回成功！'),
             backgroundColor: AppTheme.successColor,
           ),
         );
-        Navigator.pop(context);
       } else {
-        debugPrint('❌ 密码重置失败 [${response.code}]: ${response.message}');
+        debugPrint('❌ 密码找回失败 [${response.code}]: ${response.message}');
         debugPrint('=====================================');
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -257,18 +227,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     } catch (e, stackTrace) {
       setState(() => _isLoading = false);
       
-      debugPrint('❌ 重置密码异常: $e');
+      debugPrint('❌ 找回密码异常: $e');
       debugPrint('   - 堆栈信息: $stackTrace');
       debugPrint('=====================================');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('重置失败: $e'),
+            content: Text('找回失败: $e'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
       }
+    }
+  }
+
+  /// 复制密码到剪贴板
+  void _copyPassword() {
+    if (_retrievedPassword != null) {
+      Clipboard.setData(ClipboardData(text: _retrievedPassword!));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('密码已复制到剪贴板'),
+          backgroundColor: AppTheme.successColor,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 
@@ -491,29 +475,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 
                 const SizedBox(height: AppTheme.spacingMedium),
                 
-                // 新密码
-                TextFormField(
-                  controller: _newPasswordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.password,
-                    hintText: l10n.passwordStrengthHint,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    helperText: l10n.passwordComplexityError,
-                    helperStyle: TextStyle(fontSize: 12, color: AppTheme.textHint),
-                  ),
-                  validator: _validatePassword,
-                ),
-                
-                const SizedBox(height: AppTheme.spacingLarge),
-                
-                // 重置按钮
+                // 找回密码按钮
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _resetPassword,
+                  onPressed: _isLoading ? null : _retrievePassword,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -526,9 +490,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : Text(
-                          l10n.resetPassword,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      : const Text(
+                          '找回密码',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                         ),
                 ),
                 
@@ -563,6 +527,118 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ],
                   ),
                 ),
+                
+                // 显示找回的密码
+                if (_retrievedPassword != null) ...[
+                  const SizedBox(height: AppTheme.spacingLarge),
+                  Container(
+                    padding: const EdgeInsets.all(AppTheme.spacingLarge),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.successColor.withOpacity(0.1),
+                          AppTheme.successColor.withOpacity(0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(AppTheme.borderRadiusLarge),
+                      border: Border.all(
+                        color: AppTheme.successColor.withOpacity(0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.check_circle_rounded,
+                              color: AppTheme.successColor,
+                              size: 24,
+                            ),
+                            const SizedBox(width: AppTheme.spacingSmall),
+                            const Text(
+                              '密码找回成功',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.successColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppTheme.spacingMedium),
+                        Container(
+                          padding: const EdgeInsets.all(AppTheme.spacingMedium),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                            border: Border.all(
+                              color: AppTheme.successColor.withOpacity(0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _isPasswordVisible ? _retrievedPassword! : '••••••••',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.textPrimary,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  _isPasswordVisible
+                                      ? Icons.visibility_off_rounded
+                                      : Icons.visibility_rounded,
+                                  color: AppTheme.primaryColor,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _isPasswordVisible = !_isPasswordVisible;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingMedium),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: _copyPassword,
+                            icon: const Icon(Icons.copy_rounded),
+                            label: const Text('复制密码'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.successColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppTheme.borderRadiusMedium),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: AppTheme.spacingSmall),
+                        Text(
+                          '请妥善保管您的密码，建议立即复制并保存',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

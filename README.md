@@ -80,6 +80,374 @@ test_api.bat
 
 ### 更新日志
 
+#### 2026-04-30 - 忘记密码改为找回密码功能
+**功能改进：**
+- ✅ 将“重置密码”改为“找回密码”
+- ✅ 验证通过后直接返回明文密码，无需设置新密码
+- ✅ 添加密码显示/隐藏切换功能
+- ✅ 添加一键复制密码到剪贴板功能
+- ✅ 优化UI界面，增加密码找回成功提示卡片
+
+**后端修改：**
+- ✅ `backend/internal/model/verification.go`
+  - 新增 `RetrievePasswordRequest` 模型
+  
+- ✅ `backend/internal/service/verification_service.go`
+  - 新增 `RetrievePassword` 方法，返回明文密码
+  - 验证成功后标记验证码为已使用
+  
+- ✅ `backend/internal/handler/auth_handler.go`
+  - 新增 `RetrievePassword` handler
+  - 返回包含密码的 JSON 响应
+  
+- ✅ `backend/internal/router/router.go`
+  - 注册新路由 `/api/v1/auth/retrieve-password`
+
+**前端修改：**
+- ✅ `example/lib/utils/auth_service.dart`
+  - 新增 `retrievePassword` 方法
+  - 调用后端 `/auth/retrieve-password` API
+  - 返回密码字符串
+  
+- ✅ `example/lib/pages/auth/forgot_password_page.dart`
+  - 移除新密码输入框和密码强度验证
+  - 移除 `_newPasswordController`
+  - 新增 `_retrievedPassword` 和 `_isPasswordVisible` 状态
+  - 新增 `_retrievePassword` 方法替代 `_resetPassword`
+  - 新增 `_copyPassword` 方法实现复制功能
+  - 添加密码显示区域（带渐变背景和边框）
+  - 添加密码可见性切换按钮
+  - 添加复制密码按钮（绿色主题）
+  - 添加提示信息：“请妥善保管您的密码，建议立即复制并保存”
+
+**UI特性：**
+- 🎨 密码找回成功卡片采用绿色渐变背景
+- 🎨 密码显示区域使用等宽字体（monospace）
+- 🎨 默认隐藏密码（显示为 ••••••••）
+- 🎨 点击眼睛图标切换密码可见性
+- 🎨 复制成功后显示 SnackBar 提示
+- 🎨 响应式布局，适配不同屏幕尺寸
+
+**用户体验：**
+- 用户输入手机号/邮箱 → 发送验证码 → 输入验证码 → 点击“找回密码”
+- 系统验证通过后直接显示密码
+- 用户可以查看、复制密码
+- 无需记忆新密码，直接使用原密码登录
+
+#### 2026-04-30 - 密码改为明文存储（仅用于开发调试）
+**⚠️ 重要警告：此修改仅用于开发环境，生产环境严禁使用明文密码！**
+
+**修改内容：**
+- ✅ 移除所有 bcrypt 密码加密逻辑
+- ✅ 管理员和用户密码改为明文存储和验证
+- ✅ 方便开发调试时查看和验证密码
+
+**后端修改：**
+- ✅ `backend/internal/repository/admin_repo.go`
+  - 移除 `bcrypt` 导入
+  - `VerifyPassword` 改为明文对比
+  - `Create` 方法直接存储明文密码
+  - `UpdatePassword` 方法直接存储明文密码
+  
+- ✅ `backend/internal/repository/user_repo.go`
+  - 移除 `bcrypt` 导入
+  - `VerifyPassword` 改为明文对比
+  - `Create` 方法直接存储明文密码
+  - `UpdatePassword` 方法直接存储明文密码
+
+**数据库修改：**
+- ✅ 执行 `backend/scripts/reset_passwords_to_plaintext.sql`
+- ✅ 重置所有管理员密码为明文：
+  - admin: `123456`
+  - operator: `admin123`
+  - 19830357494: `123456`
+  - ihhtity@qq.com: `test123456`
+- ✅ 重置所有用户密码为明文：
+  - 19830357494 (张三): `user1@test.com`
+  - 13900139000 (李四): `user2@test.com`
+  - 13700137000 (厂商代表): `vendor1@test.com`
+  - ihhtity@qq.com: `test123456`
+
+**测试账号信息：**
+```
+管理端：
+- 用户名: admin, 密码: 123456
+- 用户名: operator, 密码: admin123
+- 手机号: 19830357494, 密码: 123456
+- 邮箱: ihhtity@qq.com, 密码: test123456
+
+用户端：
+- 手机号: 19830357494, 密码: user1@test.com
+- 手机号: 13900139000, 密码: user2@test.com
+- 手机号: 13700137000, 密码: vendor1@test.com
+- 邮箱: ihhtity@qq.com, 密码: test123456
+```
+
+**技术说明：**
+- ⚠️ 此修改仅用于开发调试，便于查看密码是否正确
+- ⚠️ 生产环境必须恢复 bcrypt 加密
+- ⚠️ 所有新注册和修改密码都将使用明文存储
+
+#### 2026-04-30 - 修复密码重置验证失败问题
+**问题分析：**
+- ❌ 使用邮箱重置密码时报错 `密码重置失败 [400]: 验证失败`
+- ❌ Gin 框架的 `required_without` 验证规则无法正确处理空字符串
+- ❌ 前端传递 `phone=null` 时，Go 接收为空字符串 `""`，导致验证失败
+
+**解决方案：**
+- ✅ 移除 `ResetPasswordRequest` 中的 `binding:"required_without=Email/Phone"` 验证标签
+- ✅ 在 handler 中手动验证 phone 或 email 至少有一个不为空
+- ✅ 提供更清晰的错误提示信息
+
+**修改文件：**
+- ✅ `backend/internal/model/verification.go`
+  - 移除 Phone 和 Email 字段的 binding 验证标签
+  - 允许字段为空字符串，由 handler 层进行验证
+  
+- ✅ `backend/internal/handler/auth_handler.go`
+  - 添加手动验证逻辑：检查 phone 和 email 不能同时为空
+  - 提供更明确的错误提示
+
+**技术改进：**
+- ✅ 避免 Gin 验证器对空字符串的错误判断
+- ✅ 提高代码可读性和可维护性
+- ✅ 支持手机号或邮箱任意一种方式重置密码
+
+#### 2026-04-30 - 个人中心退出登录返回登录选择页面
+**功能优化：**
+- ✅ 管理端个人中心退出登录 → 返回到登录选择页面（LoginEntryPage）
+- ✅ 用户端个人中心退出登录 → 返回到登录选择页面（LoginEntryPage）
+- ✅ 统一退出登录行为，用户体验更一致
+
+**修改文件：**
+- ✅ `example/lib/pages/admin/profile/profile_page.dart`
+  - 导入 `LoginEntryPage` 替代 `LoginPage`
+  - 退出登录时跳转到 `LoginEntryPage`
+  - 清除所有路由栈
+  
+- ✅ `example/lib/pages/user/profile_page.dart`
+  - 导入 `LoginEntryPage` 替代 `LoginPage`
+  - 退出登录时跳转到 `LoginEntryPage`
+  - 清除所有路由栈
+
+**技术改进：**
+- ✅ 删除不必要的 `LoginType` 参数传递
+- ✅ 简化代码逻辑，提高可维护性
+- ✅ 用户可以在登录选择页面重新选择管理端或用户端
+
+#### 2026-04-30 - 修复登录页面返回按钮黑屏问题
+**问题分析：**
+- ❌ 当登录页面是路由栈的第一个页面时，点击返回按钮会导致黑屏
+- ❌ 之前使用 `pushAndRemoveUntil` 强制清除路由栈并跳转到登录选择页面
+- ❌ 如果用户直接从登录页启动应用（没有经过登录选择页），会导致异常
+
+**解决方案：**
+- ✅ 使用 `Navigator.canPop(context)` 检查是否有路由可以返回
+- ✅ 只有当路由栈不为空时才显示返回按钮
+- ✅ 当路由栈为空时，返回按钮设置为 `null`（不显示）
+- ✅ 避免在栈底页面点击返回导致的黑屏问题
+
+**修改文件：**
+- ✅ `example/lib/pages/auth/login_page.dart`
+  - 将自定义的返回按钮逻辑改为条件显示
+  - 简化返回逻辑，直接使用 `Navigator.pop()`
+  - 删除不必要的 `LoginEntryPage` 导入和复杂的路由清除逻辑
+
+**技术改进：**
+- ✅ 遵循 Flutter 最佳实践，使用 `Navigator.canPop()` 检查路由状态
+- ✅ 保持代码简洁，减少不必要的路由操作
+- ✅ 提升用户体验，避免异常情况下的黑屏问题
+
+#### 2026-04-30 - 登录页面和个人中心导航优化
+**登录页面优化：**
+- ✅ 添加 AppBar 导航栏
+- ✅ 返回按钮始终显示（无论路由栈状态）
+- ✅ 点击返回按钮先清除所有路由栈
+- ✅ 然后返回到登录选择页面（LoginEntryPage）
+- ✅ 标题根据登录类型显示（管理端/用户端）
+- ✅ AppBar 背景色根据登录类型变化（蓝色/绿色）
+- ✅ 减少顶部间距（40px → 20px）
+- ✅ **修复退出登录后返回按钮导致黑屏的问题**
+  - 使用 `pushAndRemoveUntil` 清空路由栈
+  - 确保始终返回到登录选择页面
+  - 避免在路由栈为空时调用 `pop()` 导致黑屏
+
+**退出登录优化：**
+- ✅ 管理端退出登录 → 跳转到管理端登录页面
+- ✅ 用户端退出登录 → 跳转到用户端登录页面
+- ✅ 使用 `pushAndRemoveUntil` 清除路由栈
+- ✅ 确保返回正确的登录类型
+
+**技术改进：**
+- ✅ 导入 `LoginType` 枚举（auth_service.dart）
+- ✅ 明确指定登录类型参数
+- ✅ 保持编码格式不变
+
+**详细文档：**
+- 所有修改记录请查看本 README.md 的更新日志部分
+
+#### 2026-04-30 - 用户端个人中心页面优化
+**样式优化：**
+- ✅ 移除 AppBar，使用沉浸式渐变头部设计
+- ✅ 顶部区域采用全宽渐变背景（蓝色渐变）
+- ✅ 个人信息卡片重新设计：
+  - 白色圆形头像（带阴影效果）
+  - 昵称 + 手机号标签（半透明白色背景）
+  - 编辑按钮（圆角边框设计）
+- ✅ 功能菜单改为卡片式布局：
+  - 账号管理卡片（带图标标题）
+  - 服务支持卡片（带图标标题）
+  - 每个菜单项有独立图标容器
+  - 更宽松的间距和留白
+- ✅ 退出登录按钮优化：
+  - 白色卡片背景
+  - 居中红色图标+文字
+  - 点击涟漪效果
+- ✅ 使用 CustomScrollView 替代 SingleChildScrollView
+- ✅ 整体风格更加简洁、现代、美观
+
+**技术改进：**
+- ✅ 添加 MenuItemData 数据模型类
+- ✅ 重构 _buildMenuCards() 方法
+- ✅ 新增 _buildMenuCard() 通用卡片组件
+- ✅ Hero 动画支持（头像）
+- ✅ 响应式布局（适配状态栏高度）
+
+#### 2026-04-30 - Redis 缓存服务配置
+**Redis 安装与配置：**
+- ✅ 安装 Redis for Windows (v3.0.504)
+- ✅ 启动 Redis 服务（端口：6379）
+- ✅ 后端成功连接 Redis
+- ✅ 双层缓存架构生效（Ristretto + Redis）
+
+**缓存功能：**
+- ✅ 设备缓存（5分钟 TTL）
+- ✅ 用户缓存（30分钟 TTL）
+- ✅ 设备列表缓存（2分钟 TTL）
+- ✅ 本地缓存（30秒 TTL）+ Redis 缓存（300秒 TTL）
+
+**配置文件：** `backend/configs/config.yaml`
+```yaml
+redis:
+  enabled: true
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
+  pool_size: 100
+```
+
+**验证命令：**
+```powershell
+# 测试 Redis 连接
+& "C:\Program Files\Redis\redis-cli.exe" ping
+# 返回: PONG
+
+# 查看 Redis 信息
+& "C:\Program Files\Redis\redis-cli.exe" info server
+```
+
+#### 2026-04-30 - 用户端页面开发
+**新增页面：**
+- ✅ `example/lib/pages/user/self_service_page.dart` - 用户端自助服务页面
+  - ✅ 欢迎卡片（渐变背景 + 图标）
+  - ✅ 快捷功能（开门、记录、二维码、帮助）
+  - ✅ 常用服务（门锁管理、家庭成员、密码管理等6个功能）
+  - ✅ 底部导航栏（服务/我的切换）
+  
+- ✅ `example/lib/pages/user/profile_page.dart` - 用户端个人中心页面
+  - ✅ 个人信息卡片（头像、昵称、手机号）
+  - ✅ 功能菜单分组（账号管理、服务支持）
+  - ✅ 退出登录功能（带确认对话框）
+  - ✅ 底部导航栏（服务/我的切换）
+
+**登录跳转优化：**
+- ✅ 管理端登录成功 → 跳转到房间管理页面
+- ✅ 用户端登录成功 → 跳转到自助服务页面
+- ✅ 根据 `LoginType` 自动判断跳转目标
+
+**设计特点：**
+- 🎨 简洁美观的卡片式布局
+- 🎨 渐变色背景和阴影效果
+- 🎨 统一的图标和颜色系统
+- 🎨 流畅的页面切换动画
+- 🎨 友好的用户交互反馈
+
+#### 2026-04-30 - 页面目录结构优化
+**目录重构：**
+- ✅ `example/lib/pages/` - 重新组织页面目录结构
+- ✅ `auth/` - 管理端和用户端公用（登录、注册、忘记密码等）
+- ✅ `admin/` - 管理端专用页面
+  - ✅ `admin/profile/` - 管理端个人中心
+  - ✅ `admin/rooms/` - 管理端房间管理
+- ✅ `user/` - 用户端专用页面（待开发）
+
+**路径修复：**
+- ✅ 批量修复 admin 目录下所有文件的导入路径
+- ✅ `../../` → `../../../` (lib 目录引用，profile/rooms 根目录)
+- ✅ `../../../` → `../../../../` (lib 目录引用，子目录如 account/device/finance等)
+- ✅ `../auth/` → `../../auth/` (auth 目录引用，profile/rooms 根目录)
+- ✅ `../profile/` → `../profile/` (同级目录引用)
+- ✅ 保持 UTF-8 编码格式不变
+- ✅ 删除 main.dart 中未使用的导入
+
+#### 2026-04-30 - 登录页面支持手机号或邮箱登录
+**功能改进：**
+- ✅ `example/lib/pages/auth/login_page.dart` - 添加登录方式切换功能
+- ✅ 支持手机号登录和邮箱登录两种方式
+- ✅ 添加登录方式选择按钮（手机号/邮箱）
+- ✅ 根据选择的登录方式动态显示对应的输入框
+- ✅ 添加邮箱格式验证
+- ✅ 优化调试日志，显示登录方式和账号信息
+
+**界面优化：**
+- 🎨 重新设计登录方式选择卡片，使用渐变背景和阴影效果
+- 🎨 选中的登录方式按钮有渐变色和投影效果，更加醒目
+- 🎨 输入框采用卡片式设计，带有阴影和圆角
+- 🎨 国家选择器独立卡片，在登录方式之后、输入框之前
+- 🎨 国家选择卡片显示国旗、国家名称、区号，美观清晰
+- 🎨 密码输入框添加锁图标，更加直观
+- 🎨 所有输入框聚焦时有蓝色边框高亮
+- 🎨 动画过渡效果流畅自然
+- 🎨 删除重复的国家选择器，界面更简洁
+- 🎨 **顶部标题**：左图标右文字布局（无卡片背景），管理端/用户端图标 + 标题 + 说明
+- 🎨 **登录方式卡片**：左图标右文字布局，切换图标 + 标题 + 两个横向按钮
+- 🎨 **登录方式按钮**：左图标右文字布局，图标 + 文字横向排列
+
+**本地化功能：**
+- 🌍 国家选择持久化保存（LocalCache）
+- 🌍 下次启动自动恢复上次选择的国家
+- 🌍 根据国家代码自动推断语言代码（中、英、日、韩、法、德、西等）
+- 🌍 为后续应用语言切换提供基础支持
+
+**用户体验：**
+- 用户可以在登录时自由选择使用手机号或邮箱
+- 国家选择一次，永久记忆，无需重复设置
+- 界面美观现代，符合 Material Design 规范
+- 切换流畅，视觉反馈清晰
+- 邮箱输入有格式验证，防止输入错误
+- 管理端和用户端都支持相同的登录方式
+
+#### 2026-04-30 - 重置密码功能支持管理端和用户端
+**问题：** 忘记密码页面无法区分管理端和用户端，管理员无法重置密码
+
+**修复内容：**
+
+**后端修改：**
+- ✅ `backend/internal/service/verification_service.go` - 修改 ResetPassword 方法，先查询 admins 表，再查询 clients 表
+- ✅ `backend/internal/repository/admin_repo.go` - 添加 UpdatePassword 方法，支持管理员密码更新
+- ✅ `backend/internal/service/auth_service.go` - 修复类型错误，添加 verificationRepo 字段
+
+**前端修改：**
+- ✅ `example/lib/utils/auth_service.dart` - resetPassword 方法添加 loginType 参数（默认用户端）
+- ✅ `example/lib/pages/auth/forgot_password_page.dart` - 传递 loginType 到重置密码方法
+- ✅ 增加调试日志，显示登录类型信息
+
+**技术细节：**
+- 后端采用自动识别策略：先查 admins 表，如果找到则更新管理员密码，否则查 clients 表
+- 前端通过 LoginType 枚举传递用户类型，便于日志记录和后续扩展
+- 管理员和普通用户使用不同的数据表和 Repository
+
 #### 2026-04-29 - 修复注册功能：允许邮箱单独注册（phone字段可为NULL）
 **问题：** 使用邮箱注册时报错 `Error 1048 (23000): Column 'phone' cannot be null`
 

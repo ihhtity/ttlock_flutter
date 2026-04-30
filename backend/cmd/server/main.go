@@ -33,7 +33,7 @@ func main() {
 		log.Fatalf("初始化日志失败: %v", err)
 	}
 
-	logger.Info("应用启动中...")
+// 	logger.Info("应用启动中...")
 
 	// 初始化数据库
 	if err := database.Init(&cfg.Database); err != nil {

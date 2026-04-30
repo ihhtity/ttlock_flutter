@@ -58,7 +58,7 @@ func createConnectionPool(dsn string, cfg *config.DatabaseConfig) (*sql.DB, erro
 		return nil, err
 	}
 
-	log.Println("数据库连接成功")
+// 	log.Println("数据库连接成功")
 	return db, nil
 }
 

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'api_client.dart';
 
@@ -256,6 +255,7 @@ class AuthService {
     String? email,
     required String code,
     required String newPassword,
+    LoginType loginType = LoginType.client, // 默认用户端
   }) async {
     try {
       final requestBody = {
@@ -265,7 +265,7 @@ class AuthService {
         'new_password': newPassword,
       };
 
-      debugPrint('🔄 重置密码请求');
+      debugPrint('🔄 重置密码请求 [${loginType == LoginType.admin ? "管理端" : "用户端"}]');
       debugPrint('   - Phone: ${phone ?? "null"}');
       debugPrint('   - Email: ${email ?? "null"}');
       debugPrint('   - Code: ${code.isNotEmpty ? "***" : "empty"}');
@@ -285,6 +285,52 @@ class AuthService {
       debugPrint('❌ 密码重置异常: $e');
       debugPrint('   - 堆栈信息: $stackTrace');
       return ApiResponse.fromError(500, '重置密码失败: $e');
+    }
+  }
+
+  /// 找回密码（返回明文密码）
+  static Future<ApiResponse<String>> retrievePassword({
+    String? phone,
+    String? email,
+    required String code,
+    LoginType loginType = LoginType.client,
+  }) async {
+    try {
+      final requestBody = {
+        if (phone != null) 'phone': phone,
+        if (email != null) 'email': email,
+        'code': code,
+      };
+
+      debugPrint('🔑 ========== 开始找回密码 ==========');
+      debugPrint('   - 登录类型: ${loginType == LoginType.admin ? "管理端" : "用户端"}');
+      debugPrint('   - Phone: ${phone ?? "null"}');
+      debugPrint('   - Email: ${email ?? "null"}');
+      debugPrint('   - Code: ${code.isNotEmpty ? "***" : "empty"}');
+
+      final response = await HttpClient.post('/auth/retrieve-password', body: requestBody);
+
+      if (response.isSuccess && response.data != null) {
+        final password = (response.data as Map<String, dynamic>)['password'] as String?;
+        debugPrint('✅ 密码找回成功');
+        debugPrint('=====================================');
+        if (password != null) {
+          return ApiResponse.fromSuccess(password);
+        } else {
+          return ApiResponse.fromError(500, '未找到密码信息');
+        }
+      } else {
+        debugPrint('❌ 密码找回失败 [${response.code}]: ${response.message}');
+        debugPrint('   - 请求参数: phone=${phone ?? "null"}, email=${email ?? "null"}');
+        debugPrint('   - 响应数据: ${response.data}');
+        debugPrint('=====================================');
+        return ApiResponse.fromError(response.code, response.message);
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ 密码找回异常: $e');
+      debugPrint('   - 堆栈信息: $stackTrace');
+      debugPrint('=====================================');
+      return ApiResponse.fromError(500, '找回密码失败: $e');
     }
   }
 

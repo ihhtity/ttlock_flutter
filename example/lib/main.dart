@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
 import 'pages/auth/login_entry_page.dart';
-import 'ttlocktest/home_page.dart';
 import 'theme.dart';
 import 'utils/language_manager.dart';
 // import 'utils/local_cache.dart';  // 暂时注释

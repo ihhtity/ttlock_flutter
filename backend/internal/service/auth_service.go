@@ -13,7 +13,7 @@ import (
 type AuthService struct {
 	userRepo *repository.UserRepository
 	adminRepo *repository.AdminRepository
-	verificationRepo *repository.VerificationRepository
+	verificationRepo *repository.VerificationCodeRepository
 }
 
 // NewAuthService 创建认证服务
@@ -21,7 +21,7 @@ func NewAuthService() *AuthService {
 	return &AuthService{
 		userRepo: repository.NewUserRepository(),
 		adminRepo: repository.NewAdminRepository(),
-		verificationRepo: repository.NewVerificationRepository(),
+		verificationRepo: repository.NewVerificationCodeRepository(),
 	}
 }
 
@@ -183,11 +183,12 @@ func (s *AuthService) registerAdmin(req *model.RegisterRequest) error {
 	}
 	
 	// 创建管理员
+	realName := req.Nickname
 	admin := &model.Admin{
 		Username:   username,
 		Email:      req.Email,
 		Phone:      req.Phone,
-		RealName:   req.Nickname,
+		RealName:   &realName,
 		AgreeTerms: req.AgreeTerms,
 		Status:     1,
 	}
@@ -283,13 +284,26 @@ func (s *AuthService) registerClient(req *model.RegisterRequest) error {
 		emailStr = *req.Email
 	}
 	
+	logger.Info("准备标记验证码为已使用", 
+		zap.String("phone", phoneStr),
+		zap.String("email", emailStr),
+		zap.Int("type", 1))
+	
 	verificationCode, err := s.verificationRepo.FindValidCode(phoneStr, emailStr, 1)
-	if err == nil && verificationCode != nil {
+	if err != nil {
+		logger.Warn("查找验证码失败", zap.Error(err))
+	} else if verificationCode == nil {
+		logger.Warn("未找到有效的验证码，可能已被使用或过期",
+			zap.String("phone", phoneStr),
+			zap.String("email", emailStr))
+	} else {
 		if markErr := s.verificationRepo.MarkAsUsed(verificationCode.ID); markErr != nil {
-			logger.Warn("标记验证码为已使用失败", markErr)
+			logger.Warn("标记验证码为已使用失败", zap.Error(markErr))
 			// 不影响注册成功，只记录警告
 		} else {
-			logger.Info("验证码已标记为已使用", zap.Int("code_id", verificationCode.ID))
+			logger.Info("✅ 验证码已标记为已使用", 
+				zap.Int("code_id", verificationCode.ID),
+				zap.String("code", verificationCode.Code))
 		}
 	}
 

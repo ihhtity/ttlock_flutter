@@ -160,6 +160,23 @@ class LocalCache {
     return getString('country_code');
   }
   
+  /// 保存国家选择（包含国家代码和语言代码）
+  static Future<bool> saveSelectedCountry(String countryCode, String languageCode) async {
+    await setString('selected_country_code', countryCode);
+    await setString('selected_language_code', languageCode);
+    return true;
+  }
+  
+  /// 获取已选择的国家代码
+  static String? getSelectedCountryCode() {
+    return getString('selected_country_code');
+  }
+  
+  /// 获取已选择的语言代码
+  static String? getSelectedLanguageCode() {
+    return getString('selected_language_code');
+  }
+  
   /// 保存语言设置
   static Future<bool> saveLanguage(String language) {
     return setString('app_language', language);

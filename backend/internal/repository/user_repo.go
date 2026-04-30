@@ -5,7 +5,6 @@ import (
 	"time"
 	"ttlock-backend/internal/database"
 	"ttlock-backend/internal/model"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // UserRepository 用户数据访问
@@ -48,12 +47,7 @@ func (r *UserRepository) FindByPhone(phone string) (*model.Client, error) {
 func (r *UserRepository) Create(user *model.Client, password string) error {
 	db := database.GetWriteDB()
 	
-	// 密码加密
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	
+	// 明文存储密码（仅用于开发调试）
 	now := time.Now()
 	query := `INSERT INTO clients (admins_id, phone, email, password, nickname, country, dial_code, 
 	                               agree_terms, phone_bound, email_bound, is_vendor, status, 
@@ -61,7 +55,7 @@ func (r *UserRepository) Create(user *model.Client, password string) error {
 	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	
 	result, err := db.Exec(query,
-		user.AdminsID, user.Phone, user.Email, string(hashedPassword), user.Nickname,
+		user.AdminsID, user.Phone, user.Email, password, user.Nickname,
 		user.Country, user.DialCode, user.AgreeTerms, user.PhoneBound,
 		user.EmailBound, user.IsVendor, user.Status, now, now,
 	)
@@ -93,10 +87,9 @@ func (r *UserRepository) UpdateLastLogin(userID int) error {
 	return err
 }
 
-// VerifyPassword 验证密码
-func (r *UserRepository) VerifyPassword(hashedPassword, password string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
-	return err == nil
+// VerifyPassword 验证密码（明文对比）
+func (r *UserRepository) VerifyPassword(storedPassword, password string) bool {
+	return storedPassword == password
 }
 
 // FindByEmail 根据邮箱查找用户
@@ -127,19 +120,14 @@ func (r *UserRepository) FindByEmail(email string) (*model.Client, error) {
 	return &user, nil
 }
 
-// UpdatePassword 更新密码
+// UpdatePassword 更新密码（明文存储）
 func (r *UserRepository) UpdatePassword(userID int, newPassword string) error {
 	db := database.GetWriteDB()
 	
-	// 密码加密
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return err
-	}
-	
+	// 明文存储密码（仅用于开发调试）
 	now := time.Now()
 	query := `UPDATE clients SET password = ?, updated = ? WHERE id = ?`
-	_, err = db.Exec(query, string(hashedPassword), now, userID)
+	_, err := db.Exec(query, newPassword, now, userID)
 	
 	return err
 }

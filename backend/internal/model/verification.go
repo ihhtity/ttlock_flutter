@@ -32,8 +32,15 @@ type VerifyCodeRequest struct {
 
 // ResetPasswordRequest 重置密码请求
 type ResetPasswordRequest struct {
-	Phone       string `json:"phone" binding:"required_without=Email"`
-	Email       string `json:"email" binding:"required_without=Phone"`
+	Phone       string `json:"phone"`
+	Email       string `json:"email"`
 	Code        string `json:"code" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+// RetrievePasswordRequest 找回密码请求
+type RetrievePasswordRequest struct {
+	Phone string `json:"phone"`
+	Email string `json:"email"`
+	Code  string `json:"code" binding:"required"`
 }

@@ -178,6 +178,13 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	phone := req.Phone
 	email := req.Email
 
+	// 手动验证 phone 或 email 至少有一个不为空
+	if phone == "" && email == "" {
+		logger.Warn("重置密码参数错误: phone和email不能同时为空")
+		response.BadRequest(c, "手机号或邮箱不能同时为空")
+		return
+	}
+
 	logger.Info("收到重置密码请求",
 		zap.String("phone", phone),
 		zap.String("email", email))
@@ -194,4 +201,46 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		zap.String("phone", phone),
 		zap.String("email", email))
 	response.SuccessWithMessage(c, "密码重置成功", nil)
+}
+
+// RetrievePassword 找回密码（返回明文密码）
+func (h *AuthHandler) RetrievePassword(c *gin.Context) {
+	var req model.RetrievePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		logger.Warn("找回密码参数错误", zap.Error(err))
+		response.BadRequest(c, "参数错误: "+err.Error())
+		return
+	}
+
+	phone := req.Phone
+	email := req.Email
+
+	// 手动验证 phone 或 email 至少有一个不为空
+	if phone == "" && email == "" {
+		logger.Warn("找回密码参数错误: phone和email不能同时为空")
+		response.BadRequest(c, "手机号或邮箱不能同时为空")
+		return
+	}
+
+	logger.Info("收到找回密码请求",
+		zap.String("phone", phone),
+		zap.String("email", email))
+
+	password, err := h.verificationService.RetrievePassword(phone, email, req.Code)
+	if err != nil {
+		logger.Error("找回密码失败", err,
+			zap.String("phone", phone),
+			zap.String("email", email))
+		response.BadRequest(c, err.Error())
+		return
+	}
+
+	logger.Info("密码找回成功",
+		zap.String("phone", phone),
+		zap.String("email", email))
+	
+	// 返回明文密码
+	response.Success(c, gin.H{
+		"password": password,
+	})
 }
