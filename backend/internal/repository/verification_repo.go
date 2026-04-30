@@ -40,6 +40,9 @@ func (r *VerificationCodeRepository) Create(code *model.VerificationCode) error 
 func (r *VerificationCodeRepository) FindValidCode(phone, email string, codeType int) (*model.VerificationCode, error) {
 	db := database.GetReadDB()
 
+	// 首先，将已过期的验证码标记为已过期
+	r.ExpireExpiredCodes()
+
 	var query string
 	var args []interface{}
 
@@ -103,5 +106,17 @@ func (r *VerificationCodeRepository) ExpireOldCodes(phone, email string, codeTyp
 	}
 
 	_, err := db.Exec(query, args...)
+	return err
+}
+
+// ExpireExpiredCodes 将所有已过期的验证码标记为已过期
+func (r *VerificationCodeRepository) ExpireExpiredCodes() error {
+	db := database.GetWriteDB()
+
+	now := time.Now()
+	query := `UPDATE verification_codes SET status = 2, updated_at = ? 
+	         WHERE status = 0 AND expire_at <= ?`
+	_, err := db.Exec(query, now, now)
+
 	return err
 }

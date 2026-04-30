@@ -77,10 +77,15 @@ class AuthService {
     String? email,
     required String password,
     LoginType loginType = LoginType.client,
+    String country = 'CN',
+    String dialCode = '+86',
   }) async {
     try {
       final body = <String, dynamic>{
         'password': password,
+        'user_type': loginType == LoginType.admin ? 1 : 2, // 1-管理端，2-用户端
+        'country': country,
+        'dial_code': dialCode,
       };
 
       if (phone != null && phone.isNotEmpty) {
@@ -93,6 +98,9 @@ class AuthService {
       debugPrint('🔐 开始登录请求 [${loginType == LoginType.admin ? "管理端" : "用户端"}]');
       debugPrint('   - Phone: ${phone ?? "null"}');
       debugPrint('   - Email: ${email ?? "null"}');
+      debugPrint('   - UserType: ${loginType == LoginType.admin ? 1 : 2}');
+      debugPrint('   - Country: $country');
+      debugPrint('   - DialCode: $dialCode');
 
       final response = await HttpClient.post('/auth/login', body: body);
 
@@ -128,7 +136,7 @@ class AuthService {
     required String nickname,
     required int adminsId,
     required bool agreeTerms,
-    int registerType = 2, // 1-管理端注册，2-用户端注册（默认）
+    LoginType loginType = LoginType.client, // 添加登录类型参数
     String country = 'CN',
     String dialCode = '+86',
   }) async {
@@ -144,7 +152,7 @@ class AuthService {
         'dial_code': dialCode,
         'phone_bound': phone.isNotEmpty ? 1 : 0,
         'email_bound': (email != null && email.isNotEmpty) ? 1 : 0,
-        'register_type': registerType, // 注册类型：1-管理端，2-用户端
+        'register_type': loginType == LoginType.admin ? 1 : 2, // 注册类型：1-管理端，2-用户端
       };
 
       debugPrint('📝 开始注册请求');

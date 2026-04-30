@@ -43,6 +43,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     super.initState();
     // 监听国家选择变化
     _countryManager.addListener(_onCountryChanged);
+    
+    // 设置默认测试数据
+    _phoneController.text = '13277751142';
+    _emailController.text = '2794159940@qq.com';
+    _verificationCodeController.text = '123456';
   }
 
   @override
@@ -65,6 +70,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   bool _isValidEmail(String email) {
     final emailRegex = RegExp(r'^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$');
     return emailRegex.hasMatch(email);
+  }
+
+  /// 检测是否包含中文字符
+  bool _containsChinese(String text) {
+    // 匹配中文字符（包括简体中文、繁体中文）
+    final chineseRegex = RegExp(r'[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f]');
+    return chineseRegex.hasMatch(text);
   }
 
   /// 找回密码
@@ -175,6 +187,30 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   /// 找回密码
   Future<void> _retrievePassword() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // 检查是否包含中文字符
+    final account = _recoveryMethod == RecoveryMethod.phone 
+        ? _phoneController.text.trim() 
+        : _emailController.text.trim();
+    if (_containsChinese(account)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('账号不能包含中文字符'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    if (_containsChinese(_verificationCodeController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('验证码不能包含中文字符'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     

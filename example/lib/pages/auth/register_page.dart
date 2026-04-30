@@ -50,6 +50,13 @@ class _RegisterPageState extends State<RegisterPage> {
     // 监听国家选择变化
     _countryManager.addListener(_onCountryChanged);
 
+    // 设置默认测试数据
+    _phoneController.text = '13277751142';
+    _emailController.text = 'ihhtity@qq.com';
+    _passwordController.text = 'l12345678';
+    _confirmPasswordController.text = 'l12345678';
+    _verificationCodeController.text = '123456';
+
     // 加载用户协议同意状态（持久化）
     _loadAgreementStatus();
   }
@@ -90,6 +97,13 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isValidEmail(String email) {
     final emailRegex = RegExp(r'^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$');
     return emailRegex.hasMatch(email);
+  }
+
+  /// 检测是否包含中文字符
+  bool _containsChinese(String text) {
+    // 匹配中文字符（包括简体中文、繁体中文）
+    final chineseRegex = RegExp(r'[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f]');
+    return chineseRegex.hasMatch(text);
   }
 
   /// 验证密码强度
@@ -271,6 +285,50 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
+    // 检查是否包含中文字符
+    final account = _registerMethod == RegisterMethod.phone 
+        ? _phoneController.text.trim() 
+        : _emailController.text.trim();
+    if (_containsChinese(account)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('账号不能包含中文字符'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    if (_containsChinese(_passwordController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('密码不能包含中文字符'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    if (_containsChinese(_confirmPasswordController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('确认密码不能包含中文字符'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    if (_containsChinese(_verificationCodeController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('验证码不能包含中文字符'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -325,7 +383,7 @@ class _RegisterPageState extends State<RegisterPage> {
             : _emailController.text.trim(),
         adminsId: (widget.loginType == LoginType.admin) ? 1 : 0, // 管理端需要 adminsId，用户端可以为 0
         agreeTerms: _agreeToTerms,
-        registerType: widget.loginType == LoginType.admin ? 1 : 2, // 1-管理端注册，2-用户端注册
+        loginType: widget.loginType, // 传递登录类型
         country: _countryManager.selectedCountry.code,
         dialCode: _countryManager.selectedCountry.dialCode,
       );

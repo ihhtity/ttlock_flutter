@@ -45,7 +45,7 @@ class HttpClient {
   // Android模拟器使用 10.0.2.2 访问宿主机 localhost
   // iOS模拟器使用 localhost
   // 真机测试需要使用电脑的实际IP地址
-  static const String baseUrl = 'http://10.0.2.2:8080/api/v1';
+  static const String baseUrl = 'http://192.168.3.143:8080/api/v1';
   
   static String? _token;
   

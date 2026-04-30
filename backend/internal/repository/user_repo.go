@@ -20,16 +20,14 @@ func (r *UserRepository) FindByPhone(phone string) (*model.Client, error) {
 	db := database.GetReadDB()
 	
 	query := `SELECT id, admins_id, phone, email, password, nickname, avatar, 
-	                 country, dial_code, agree_terms, phone_bound, email_bound, 
-	                 is_vendor, status, last_login, login_count, created, updated 
+	                 country, dial_code, agree_terms, status, last_login, login_count, created, updated 
 	          FROM clients WHERE phone = ?`
 	
 	var user model.Client
 	err := db.QueryRow(query, phone).Scan(
 		&user.ID, &user.AdminsID, &user.Phone, &user.Email, &user.Password,
 		&user.Nickname, &user.Avatar, &user.Country, &user.DialCode,
-		&user.AgreeTerms, &user.PhoneBound, &user.EmailBound,
-		&user.IsVendor, &user.Status, &user.LastLogin, &user.LoginCount,
+		&user.AgreeTerms, &user.Status, &user.LastLogin, &user.LoginCount,
 		&user.CreatedAt, &user.UpdatedAt,
 	)
 	
@@ -50,14 +48,12 @@ func (r *UserRepository) Create(user *model.Client, password string) error {
 	// 明文存储密码（仅用于开发调试）
 	now := time.Now()
 	query := `INSERT INTO clients (admins_id, phone, email, password, nickname, country, dial_code, 
-	                               agree_terms, phone_bound, email_bound, is_vendor, status, 
-	                               created, updated) 
-	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	                               agree_terms, status, created, updated) 
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	
 	result, err := db.Exec(query,
 		user.AdminsID, user.Phone, user.Email, password, user.Nickname,
-		user.Country, user.DialCode, user.AgreeTerms, user.PhoneBound,
-		user.EmailBound, user.IsVendor, user.Status, now, now,
+		user.Country, user.DialCode, user.AgreeTerms, user.Status, now, now,
 	)
 	
 	if err != nil {
@@ -97,16 +93,14 @@ func (r *UserRepository) FindByEmail(email string) (*model.Client, error) {
 	db := database.GetReadDB()
 	
 	query := `SELECT id, admins_id, phone, email, password, nickname, avatar, 
-	                 country, dial_code, agree_terms, phone_bound, email_bound, 
-	                 is_vendor, status, last_login, login_count, created, updated 
+	                 country, dial_code, agree_terms, status, last_login, login_count, created, updated 
 	          FROM clients WHERE email = ?`
 	
 	var user model.Client
 	err := db.QueryRow(query, email).Scan(
 		&user.ID, &user.AdminsID, &user.Phone, &user.Email, &user.Password,
 		&user.Nickname, &user.Avatar, &user.Country, &user.DialCode,
-		&user.AgreeTerms, &user.PhoneBound, &user.EmailBound,
-		&user.IsVendor, &user.Status, &user.LastLogin, &user.LoginCount,
+		&user.AgreeTerms, &user.Status, &user.LastLogin, &user.LoginCount,
 		&user.CreatedAt, &user.UpdatedAt,
 	)
 	
@@ -128,6 +122,17 @@ func (r *UserRepository) UpdatePassword(userID int, newPassword string) error {
 	now := time.Now()
 	query := `UPDATE clients SET password = ?, updated = ? WHERE id = ?`
 	_, err := db.Exec(query, newPassword, now, userID)
+	
+	return err
+}
+
+// UpdateCountry 更新国家/地区信息
+func (r *UserRepository) UpdateCountry(userID int, country, dialCode *string) error {
+	db := database.GetWriteDB()
+	
+	now := time.Now()
+	query := `UPDATE clients SET country = ?, dial_code = ?, updated = ? WHERE id = ?`
+	_, err := db.Exec(query, country, dialCode, now, userID)
 	
 	return err
 }

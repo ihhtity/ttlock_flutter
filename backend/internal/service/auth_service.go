@@ -26,7 +26,7 @@ func NewAuthService() *AuthService {
 }
 
 // Login 用户登录（支持管理端和客户端）
-func (s *AuthService) Login(phone, email, password string) (*model.LoginResponse, error) {
+func (s *AuthService) Login(phone, email, password string, userType int, country, dialCode string) (*model.LoginResponse, error) {
 	// 参数验证
 	if password == "" {
 		return nil, errors.New("密码不能为空")
@@ -35,45 +35,139 @@ func (s *AuthService) Login(phone, email, password string) (*model.LoginResponse
 	if phone == "" && email == "" {
 		return nil, errors.New("手机号或邮箱不能为空")
 	}
-
-	// 先尝试查找管理员（优先使用用户名/手机号）
-	if phone != "" {
-		admin, err := s.adminRepo.FindByUsername(phone)
-		if err != nil {
-			logger.Error("查询管理员失败", err, zap.String("username", phone))
-			return nil, errors.New("服务器错误，请稍后重试")
-		}
-
-		if admin != nil {
-			// 管理员登录
-			return s.loginAdmin(admin, password)
-		}
+	
+	// 如果userType未指定，默认为用户端
+	if userType == 0 {
+		userType = 2
 	}
 
-	// 如果不是管理员，尝试查找客户端用户
+	// 根据用户类型区分访问不同的表
+	if userType == 1 {
+		// 管理端登录 - 查询 admins 表
+		return s.loginAdminByPhoneOrEmail(phone, email, password, country, dialCode)
+	} else {
+		// 用户端登录 - 查询 clients 表
+		return s.loginClientByPhoneOrEmail(phone, email, password, country, dialCode)
+	}
+}
+
+// loginAdminByPhoneOrEmail 管理员登录（通过手机号或邮箱）
+func (s *AuthService) loginAdminByPhoneOrEmail(phone, email, password, country, dialCode string) (*model.LoginResponse, error) {
+	var admin *model.Admin
+	var err error
+	
+	// 先尝试用手机号查找
+	if phone != "" {
+		admin, err = s.adminRepo.FindByPhone(phone)
+		if err != nil {
+			logger.Error("查询管理员失败", err, zap.String("phone", phone))
+			return nil, errors.New("服务器错误，请稍后重试")
+		}
+	}
+	
+	// 如果手机号没找到，尝试用邮箱查找
+	if admin == nil && email != "" {
+		admin, err = s.adminRepo.FindByEmail(email)
+		if err != nil {
+			logger.Error("查询管理员失败", err, zap.String("email", email))
+			return nil, errors.New("服务器错误，请稍后重试")
+		}
+	}
+	
+	if admin == nil {
+		return nil, errors.New("账号不存在，请先注册")
+	}
+	
+	// 更新国家/地区信息（如果不一致）
+	if country != "" && dialCode != "" {
+		needUpdate := false
+		newCountry := admin.Country
+		newDialCode := admin.DialCode
+		
+		if admin.Country == nil || *admin.Country != country {
+			needUpdate = true
+			newCountry = &country
+		}
+		
+		if admin.DialCode == nil || *admin.DialCode != dialCode {
+			needUpdate = true
+			newDialCode = &dialCode
+		}
+		
+		if needUpdate {
+			if updateErr := s.adminRepo.UpdateCountry(admin.ID, newCountry, newDialCode); updateErr != nil {
+				logger.Warn("更新管理员国家/地区失败", zap.Error(updateErr), zap.Int("admin_id", admin.ID))
+				// 不影响登录流程，只记录警告
+			} else {
+				logger.Info("✅ 已更新管理员国家/地区",
+					zap.Int("admin_id", admin.ID),
+					zap.String("country", country),
+					zap.String("dial_code", dialCode))
+			}
+		}
+	}
+	
+	return s.loginAdmin(admin, password)
+}
+
+// loginClientByPhoneOrEmail 客户端用户登录（通过手机号或邮箱）
+func (s *AuthService) loginClientByPhoneOrEmail(phone, email, password, country, dialCode string) (*model.LoginResponse, error) {
 	var user *model.Client
 	var err error
 	
+	// 先尝试用手机号查找
 	if phone != "" {
 		user, err = s.userRepo.FindByPhone(phone)
-	} else if email != "" {
-		user, err = s.userRepo.FindByEmail(email)
+		if err != nil {
+			logger.Error("查询用户失败", err, zap.String("phone", phone))
+			return nil, errors.New("服务器错误，请稍后重试")
+		}
 	}
 	
-	if err != nil {
-		logger.Error("查询用户失败", err)
-		return nil, errors.New("服务器错误，请稍后重试")
+	// 如果手机号没找到，尝试用邮箱查找
+	if user == nil && email != "" {
+		user, err = s.userRepo.FindByEmail(email)
+		if err != nil {
+			logger.Error("查询用户失败", err, zap.String("email", email))
+			return nil, errors.New("服务器错误，请稍后重试")
+		}
 	}
-
+	
 	if user == nil {
 		return nil, errors.New("账号不存在，请先注册")
 	}
-
-	// 客户端用户登录
+	
+	// 更新国家/地区信息（如果不一致）
+	if country != "" && dialCode != "" {
+		needUpdate := false
+		newCountry := user.Country
+		newDialCode := user.DialCode
+		
+		if user.Country == nil || *user.Country != country {
+			needUpdate = true
+			newCountry = &country
+		}
+		
+		if user.DialCode == nil || *user.DialCode != dialCode {
+			needUpdate = true
+			newDialCode = &dialCode
+		}
+		
+		if needUpdate {
+			if updateErr := s.userRepo.UpdateCountry(user.ID, newCountry, newDialCode); updateErr != nil {
+				logger.Warn("更新用户国家/地区失败", zap.Error(updateErr), zap.Int("user_id", user.ID))
+				// 不影响登录流程，只记录警告
+			} else {
+				logger.Info("✅ 已更新用户国家/地区",
+					zap.Int("user_id", user.ID),
+					zap.String("country", country),
+					zap.String("dial_code", dialCode))
+			}
+		}
+	}
+	
 	return s.loginClient(user, password)
 }
-
-// loginAdmin 管理员登录
 func (s *AuthService) loginAdmin(admin *model.Admin, password string) (*model.LoginResponse, error) {
 	// 检查管理员状态
 	if admin.Status != 1 {
@@ -208,6 +302,17 @@ func (s *AuthService) registerAdmin(req *model.RegisterRequest) error {
 		username = *req.Email
 	}
 	
+	// 处理国家/地区默认值
+	country := "CN"
+	if req.Country != "" {
+		country = req.Country
+	}
+	
+	dialCode := "+86"
+	if req.DialCode != "" {
+		dialCode = req.DialCode
+	}
+	
 	// 创建管理员
 	realName := req.Nickname
 	admin := &model.Admin{
@@ -215,6 +320,8 @@ func (s *AuthService) registerAdmin(req *model.RegisterRequest) error {
 		Email:      req.Email,
 		Phone:      req.Phone,
 		RealName:   &realName,
+		Country:    &country,
+		DialCode:   &dialCode,
 		AgreeTerms: req.AgreeTerms,
 		Status:     1,
 	}
@@ -224,10 +331,39 @@ func (s *AuthService) registerAdmin(req *model.RegisterRequest) error {
 		return errors.New("注册失败，请稍后重试")
 	}
 	
+	// 准备日志参数（安全处理 nil）
+	phoneStr := ""
+	if req.Phone != nil {
+		phoneStr = *req.Phone
+	}
+	emailStr := ""
+	if req.Email != nil {
+		emailStr = *req.Email
+	}
+	
+	// 注册成功后，标记验证码为已使用（type=1表示注册）
+	verificationCode, err := s.verificationRepo.FindValidCode(phoneStr, emailStr, 1)
+	if err != nil {
+		logger.Warn("查找验证码失败", zap.Error(err))
+	} else if verificationCode == nil {
+		logger.Warn("未找到有效的验证码，可能已被使用或过期",
+			zap.String("phone", phoneStr),
+			zap.String("email", emailStr))
+	} else {
+		if markErr := s.verificationRepo.MarkAsUsed(verificationCode.ID); markErr != nil {
+			logger.Warn("标记验证码为已使用失败", zap.Error(markErr))
+			// 不影响注册成功，只记录警告
+		} else {
+			logger.Info("✅ 验证码已标记为已使用", 
+				zap.Int("code_id", verificationCode.ID),
+				zap.String("code", verificationCode.Code))
+		}
+	}
+	
 	logger.Info("管理员注册成功", 
 		zap.String("username", username),
-		zap.String("phone", *req.Phone),
-		zap.String("email", *req.Email))
+		zap.String("phone", phoneStr),
+		zap.String("email", emailStr))
 	return nil
 }
 
@@ -268,16 +404,6 @@ func (s *AuthService) registerClient(req *model.RegisterRequest) error {
 		dialCode = req.DialCode
 	}
 	
-	phoneBound := 0
-	if req.Phone != nil && *req.Phone != "" {
-		phoneBound = 1
-	}
-	
-	emailBound := 0
-	if req.Email != nil && *req.Email != "" {
-		emailBound = 1
-	}
-	
 	// 创建用户
 	user := &model.Client{
 		AdminsID:   req.AdminsID,
@@ -287,9 +413,6 @@ func (s *AuthService) registerClient(req *model.RegisterRequest) error {
 		Country:    &country,
 		DialCode:   &dialCode,
 		AgreeTerms: req.AgreeTerms,
-		PhoneBound: phoneBound,
-		EmailBound: emailBound,
-		IsVendor:   0,
 		Status:     1,
 	}
 

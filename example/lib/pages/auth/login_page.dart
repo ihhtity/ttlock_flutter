@@ -46,8 +46,9 @@ class _LoginPageState extends State<LoginPage> {
     _countryManager.addListener(_onCountryChanged);
 
     // 设置默认测试数据
-    _phoneController.text = '19830357494';
-    _passwordController.text = '19830357494a.';
+    _phoneController.text = '13277751142';
+    _emailController.text = '2794159940@qq.com';
+    _passwordController.text = '12345678';
 
     // 加载用户协议同意状态（持久化）
     _loadAgreementStatus();
@@ -252,9 +253,38 @@ class _LoginPageState extends State<LoginPage> {
     return emailRegex.hasMatch(email);
   }
 
+  /// 检测是否包含中文字符
+  bool _containsChinese(String text) {
+    // 匹配中文字符（包括简体中文、繁体中文）
+    final chineseRegex = RegExp(r'[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3300-\u33ff\ufe30-\ufe4f]');
+    return chineseRegex.hasMatch(text);
+  }
+
   /// 登录
   Future<void> _login() async {
     if (!_validateForm()) return;
+
+    // 检查是否包含中文字符
+    final account = _usePhoneLogin ? _phoneController.text.trim() : _emailController.text.trim();
+    if (_containsChinese(account)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('账号不能包含中文字符'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
+
+    if (_containsChinese(_passwordController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('密码不能包含中文字符'),
+          backgroundColor: AppTheme.errorColor,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -274,6 +304,8 @@ class _LoginPageState extends State<LoginPage> {
         email: _usePhoneLogin ? null : _emailController.text.trim(),
         password: _passwordController.text,
         loginType: widget.loginType,
+        country: _countryManager.selectedCountry.code,
+        dialCode: _countryManager.selectedCountry.dialCode,
       );
 
       if (!mounted) return;

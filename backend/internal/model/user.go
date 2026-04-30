@@ -11,6 +11,8 @@ type Admin struct {
 	Phone       *string    `json:"phone" db:"phone"`
 	Email       *string    `json:"email" db:"email"`
 	Avatar      *string    `json:"avatar" db:"avatar"`
+	Country     *string    `json:"country" db:"country"`
+	DialCode    *string    `json:"dial_code" db:"dial_code"`
 	Role        int        `json:"role" db:"role"`
 	Permissions *string    `json:"permissions" db:"permissions"`
 	Status      int        `json:"status" db:"status"`
@@ -33,9 +35,6 @@ type Client struct {
 	Country     *string    `json:"country" db:"country"`
 	DialCode    *string    `json:"dial_code" db:"dial_code"`
 	AgreeTerms  int        `json:"agree_terms" db:"agree_terms"`
-	PhoneBound  int        `json:"phone_bound" db:"phone_bound"`
-	EmailBound  int        `json:"email_bound" db:"email_bound"`
-	IsVendor    int        `json:"is_vendor" db:"is_vendor"`
 	Status      int        `json:"status" db:"status"`
 	LastLogin   *time.Time `json:"last_login" db:"last_login"`
 	LoginCount  int        `json:"login_count" db:"login_count"`
@@ -45,9 +44,12 @@ type Client struct {
 
 // LoginRequest 登录请求
 type LoginRequest struct {
-	Phone    *string `json:"phone" binding:"required_without=Email"`
-	Email    *string `json:"email" binding:"required_without=Phone"`
-	Password string  `json:"password" binding:"required"`
+	Phone      *string `json:"phone" binding:"required_without=Email"`
+	Email      *string `json:"email" binding:"required_without=Phone"`
+	Password   string  `json:"password" binding:"required"`
+	UserType   int     `json:"user_type"` // 1-管理端，2-用户端
+	Country    string  `json:"country"`   // 国家/地区代码
+	DialCode   string  `json:"dial_code"` // 电话区号
 }
 
 // RegisterRequest 注册请求

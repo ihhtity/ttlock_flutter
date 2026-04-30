@@ -20,13 +20,14 @@ func (r *AdminRepository) FindByUsername(username string) (*model.Admin, error) 
 	db := database.GetReadDB()
 	
 	query := `SELECT id, username, password, real_name, phone, email, avatar, 
-	                 role, permissions, status, agree_terms, last_login, login_count, created, updated 
+	                 country, dial_code, role, permissions, status, agree_terms, last_login, login_count, created, updated 
 	          FROM admins WHERE username = ?`
 	
 	var admin model.Admin
 	err := db.QueryRow(query, username).Scan(
 		&admin.ID, &admin.Username, &admin.Password,
 		&admin.RealName, &admin.Phone, &admin.Email, &admin.Avatar,
+		&admin.Country, &admin.DialCode,
 		&admin.Role, &admin.Permissions, &admin.Status, &admin.AgreeTerms,
 		&admin.LastLogin, &admin.LoginCount,
 		&admin.CreatedAt, &admin.UpdatedAt,
@@ -63,13 +64,14 @@ func (r *AdminRepository) FindByPhone(phone string) (*model.Admin, error) {
 	db := database.GetReadDB()
 	
 	query := `SELECT id, username, password, real_name, phone, email, avatar, 
-	                 role, permissions, status, agree_terms, last_login, login_count, created, updated 
+	                 country, dial_code, role, permissions, status, agree_terms, last_login, login_count, created, updated 
 	          FROM admins WHERE phone = ?`
 	
 	var admin model.Admin
 	err := db.QueryRow(query, phone).Scan(
 		&admin.ID, &admin.Username, &admin.Password,
 		&admin.RealName, &admin.Phone, &admin.Email, &admin.Avatar,
+		&admin.Country, &admin.DialCode,
 		&admin.Role, &admin.Permissions, &admin.Status, &admin.AgreeTerms,
 		&admin.LastLogin, &admin.LoginCount,
 		&admin.CreatedAt, &admin.UpdatedAt,
@@ -90,13 +92,14 @@ func (r *AdminRepository) FindByEmail(email string) (*model.Admin, error) {
 	db := database.GetReadDB()
 	
 	query := `SELECT id, username, password, real_name, phone, email, avatar, 
-	                 role, permissions, status, agree_terms, last_login, login_count, created, updated 
+	                 country, dial_code, role, permissions, status, agree_terms, last_login, login_count, created, updated 
 	          FROM admins WHERE email = ?`
 	
 	var admin model.Admin
 	err := db.QueryRow(query, email).Scan(
 		&admin.ID, &admin.Username, &admin.Password,
 		&admin.RealName, &admin.Phone, &admin.Email, &admin.Avatar,
+		&admin.Country, &admin.DialCode,
 		&admin.Role, &admin.Permissions, &admin.Status, &admin.AgreeTerms,
 		&admin.LastLogin, &admin.LoginCount,
 		&admin.CreatedAt, &admin.UpdatedAt,
@@ -118,12 +121,14 @@ func (r *AdminRepository) Create(admin *model.Admin, password string) error {
 	
 	// 明文存储密码（仅用于开发调试）
 	now := time.Now()
-	query := `INSERT INTO admins (username, password, real_name, phone, email, status, agree_terms, created, updated) 
-	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO admins (username, password, real_name, phone, email, avatar, country, dial_code, status, agree_terms, created, updated) 
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	
 	result, err := db.Exec(query, 
 		admin.Username, password, admin.RealName,
-		admin.Phone, admin.Email, admin.Status, admin.AgreeTerms,
+		admin.Phone, admin.Email, admin.Avatar,
+		admin.Country, admin.DialCode,
+		admin.Status, admin.AgreeTerms,
 		now, now)
 	
 	if err != nil {
@@ -146,6 +151,17 @@ func (r *AdminRepository) UpdatePassword(adminID int, newPassword string) error 
 	now := time.Now()
 	query := `UPDATE admins SET password = ?, updated = ? WHERE id = ?`
 	_, err := db.Exec(query, newPassword, now, adminID)
+	
+	return err
+}
+
+// UpdateCountry 更新管理员国家/地区信息
+func (r *AdminRepository) UpdateCountry(adminID int, country, dialCode *string) error {
+	db := database.GetWriteDB()
+	
+	now := time.Now()
+	query := `UPDATE admins SET country = ?, dial_code = ?, updated = ? WHERE id = ?`
+	_, err := db.Exec(query, country, dialCode, now, adminID)
 	
 	return err
 }

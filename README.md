@@ -80,6 +80,230 @@ test_api.bat
 
 ### 更新日志
 
+#### 2026-04-30 - 添加中文输入检测，禁止账号密码验证码包含中文字符
+**功能优化：**
+- ✅ 登录页面：账号和密码不能包含中文字符
+- ✅ 注册页面：账号、密码、确认密码、验证码都不能包含中文字符
+- ✅ 忘记密码页面：账号和验证码不能包含中文字符
+- ✅ 提供清晰的错误提示
+
+**前端修改：**
+- ✅ `example/lib/pages/auth/login_page.dart`
+  - 添加 `_containsChinese` 方法检测中文字符
+  - 登录前检查账号和密码是否包含中文
+  
+- ✅ `example/lib/pages/auth/register_page.dart`
+  - 添加 `_containsChinese` 方法检测中文字符
+  - 注册前检查所有输入字段是否包含中文
+  
+- ✅ `example/lib/pages/auth/forgot_password_page.dart`
+  - 添加 `_containsChinese` 方法检测中文字符
+  - 找回密码前检查账号和验证码是否包含中文
+
+**技术改进：**
+- 🎯 使用正则表达式全面匹配中文字符（包括简体、繁体）
+- 🎯 在提交前进行验证，避免无效请求
+- 🎯 统一错误提示，用户体验友好
+- 🎯 防止数据库存储异常字符
+
+#### 2026-04-30 - 更新前端测试默认数据
+**功能优化：**
+- ✅ 登录页面默认数据：手机号 13277751142、密码 12345678、邮箱 2794159940@qq.com
+- ✅ 注册页面默认数据：手机号 13277751142、密码 l12345678、确认密码 l12345678、验证码 123456、邮箱 ihhtity@qq.com
+- ✅ 忘记密码页面默认数据：手机号 13277751142、邮箱 2794159940@qq.com、验证码 123456
+
+**前端修改：**
+- ✅ `example/lib/pages/auth/login_page.dart`
+  - 更新默认手机号、密码、邮箱
+  
+- ✅ `example/lib/pages/auth/register_page.dart`
+  - 更新默认手机号、邮箱、密码、确认密码、验证码
+  
+- ✅ `example/lib/pages/auth/forgot_password_page.dart`
+  - 更新默认手机号、邮箱、验证码
+
+**技术改进：**
+- 🎯 方便开发和测试，无需每次手动输入测试数据
+- 🎯 统一测试账号，便于团队协作
+
+#### 2026-04-30 - 完善管理端注册验证码状态标记
+**功能优化：**
+- ✅ 管理端注册成功后，标记验证码为“已使用”
+- ✅ 用户端和管理端注册逻辑完全一致
+- ✅ 验证码状态管理覆盖所有场景
+
+**后端修改：**
+- ✅ `backend/internal/service/auth_service.go`
+  - registerAdmin 方法添加验证码标记逻辑
+  - 注册成功后查找并标记验证码为已使用（type=1）
+  - 与 registerClient 保持完全一致的处理流程
+
+**验证码状态管理规则：**
+- 📌 **未使用 (status=0)**：
+  - 验证码创建时的初始状态
+  - 验证时只检查，不改变状态
+  - 如果注册/找回密码失败，保持未使用，用户可以重新尝试
+  
+- 📌 **已使用 (status=1)**：
+  - 用户端注册成功后标记
+  - 管理端注册成功后标记
+  - 密码重置成功后标记
+  - 密码找回成功后标记
+  
+- 📌 **已过期 (status=2)**：
+  - 超过5分钟有效期后，查询时自动标记
+  - 发送新验证码时，旧验证码自动标记为已过期
+
+**技术改进：**
+- 🎯 管理端和用户端验证码处理逻辑完全对称
+- 🎯 验证码状态流转清晰，符合业务需求
+- 🎯 失败的请求不消耗验证码，提升用户体验
+- 🎯 自动过期机制保证数据准确性
+
+#### 2026-04-30 - 修复管理端注册空指针异常
+**问题分析：**
+- ❌ 管理端注册成功后返回“服务器错误”，用户端注册正常
+- ❌ 原因：日志记录时直接解引用可能为 nil 的 `req.Phone` 和 `req.Email`
+- ❌ 当用户使用邮箱注册时，`req.Phone` 为 nil，导致 panic
+
+**修复内容：**
+- ✅ `backend/internal/service/auth_service.go`
+  - registerAdmin 方法添加安全的 nil 检查
+  - 先判断 Phone 和 Email 是否为 nil，再解引用
+  - 与 registerClient 保持一致的处理逻辑
+
+**技术改进：**
+- 🎯 避免空指针解引用导致的 panic
+- 🎯 管理端和用户端注册逻辑更加一致
+- 🎯 提高代码健壮性
+
+#### 2026-04-30 - 优化管理端登录逻辑，支持国家/地区自动更新
+**功能优化：**
+- ✅ 管理端登录时检查并更新国家/地区信息（如果不一致）
+- ✅ 管理端和用户端登录逻辑统一，都支持国家/地区自动更新
+- ✅ 前端上传参数：用户类型、手机号/邮箱、密码、国家/地区
+- ✅ 后端根据用户类型访问不同的表（admins或clients）
+- ✅ 通过手机号或邮箱自动识别账号
+
+**后端修改：**
+- ✅ `backend/internal/repository/admin_repo.go`
+  - 新增 `UpdateCountry` 方法：更新管理员的国家/地区信息
+  
+- ✅ `backend/internal/service/auth_service.go`
+  - `loginAdminByPhoneOrEmail` 方法添加 country、dialCode 参数
+  - 登录时检查管理员的国家/地区是否与数据库一致
+  - 如果不一致，自动更新为前端传递的实际值
+  - 更新失败不影响登录流程，只记录警告日志
+
+**技术改进：**
+- 🎯 管理端和用户端登录逻辑完全对称
+- 🎯 国家/地区信息实时同步，保证数据准确性
+- 🎯 登录流程更加智能，自动维护用户信息
+- 🎯 错误处理更加健壮，非关键错误不影响主流程
+
+#### 2026-04-30 - 优化用户表结构
+**数据库优化：**
+- ✅ 管理端用户表（admins）添加 `country`（国家代码）和 `dial_code`（电话区号）字段
+- ✅ 用户端用户表（clients）删除 `phone_bound`、`email_bound`、`is_vendor` 字段
+- ✅ 简化表结构，移除冗余字段
+
+**后端修改：**
+- ✅ `backend/scripts/optimize_user_tables.sql` - 新增数据库迁移脚本
+- ✅ `backend/scripts/init_db.sql` - 更新建表脚本
+  - admins 表添加 country、dial_code 字段
+  - clients 表删除 phone_bound、email_bound、is_vendor 字段
+  
+- ✅ `backend/internal/model/user.go`
+  - Admin 模型添加 Country、DialCode 字段
+  - Client 模型删除 PhoneBound、EmailBound、IsVendor 字段
+  
+- ✅ `backend/internal/repository/admin_repo.go`
+  - FindByUsername、FindByPhone、FindByEmail 方法添加 country、dial_code 查询
+  - Create 方法添加 country、dial_code 插入
+  
+- ✅ `backend/internal/repository/user_repo.go`
+  - FindByPhone、FindByEmail 方法移除 phone_bound、email_bound、is_vendor 查询
+  - Create 方法移除 phone_bound、email_bound、is_vendor 插入
+  
+- ✅ `backend/internal/service/auth_service.go`
+  - registerAdmin 方法添加 country、dial_code 处理逻辑
+  - registerClient 方法移除 phone_bound、email_bound、is_vendor 处理逻辑
+
+**技术改进：**
+- 🎯 表结构更加简洁，减少不必要的字段
+- 🎯 管理端和用户端都支持国家/地区信息
+- 🎯 注册逻辑更加清晰，只保留必要字段
+- 🎯 前后端数据模型保持一致
+
+#### 2026-04-30 - 优化验证码状态管理逻辑
+**功能优化：**
+- ✅ 验证码状态流转更加清晰：未使用(0) → 已使用(1) / 已过期(2)
+- ✅ 注册成功后才标记验证码为“已使用”，失败则保持“未使用”
+- ✅ 密码重置/找回成功后才标记验证码为“已使用”，失败则保持“未使用”
+- ✅ 查询验证码时自动检查并更新已过期的验证码状态为“已过期”
+- ✅ 发送新验证码时，自动将同一账号的旧验证码标记为“已过期”
+
+**后端修改：**
+- ✅ `backend/internal/repository/verification_repo.go`
+  - 新增 `ExpireExpiredCodes` 方法：批量将所有已过期的验证码标记为已过期
+  - 在 `FindValidCode` 方法中调用 `ExpireExpiredCodes`，确保查询时自动更新过期状态
+  
+**状态管理逻辑：**
+- 📌 **未使用 (status=0)**：验证码刚创建时的初始状态
+- 📌 **已使用 (status=1)**：注册/密码重置/找回密码成功后标记
+- 📌 **已过期 (status=2)**：
+  - 超过5分钟有效期后自动标记
+  - 发送新验证码时，旧验证码自动标记为已过期
+
+**技术改进：**
+- 🎯 验证码状态更新时机更加合理，只在业务成功后才标记为已使用
+- 🎯 失败的请求不会消耗验证码，用户可以重新尝试
+- 🎯 自动过期机制保证数据库中的验证码状态准确性
+- 🎯 避免验证码被重复使用，提高安全性
+
+#### 2026-04-30 - 优化管理端和用户端登录注册逻辑
+**功能优化：**
+- ✅ 前端上传参数增加：用户类型（区分管理端、用户端）、国家/地区代码、电话区号
+- ✅ 后端根据用户类型自动访问不同的用户表（admins表或clients表）
+- ✅ 登录时根据手机号或邮箱自动识别账号，无需手动选择
+- ✅ 登录时如果国家/地区与数据库不一致，自动更新为实际值
+- ✅ 注册时同样支持用户类型和国家/地区信息
+
+**后端修改：**
+- ✅ `backend/internal/model/user.go`
+  - LoginRequest 添加 user_type、country、dial_code 字段
+  
+- ✅ `backend/internal/service/auth_service.go`
+  - Login 方法签名修改，增加 userType、country、dialCode 参数
+  - 新增 loginAdminByPhoneOrEmail 方法：管理员登录（通过手机号或邮箱）
+  - 新增 loginClientByPhoneOrEmail 方法：客户端用户登录（通过手机号或邮箱）
+  - 登录时检查并更新国家/地区信息（如果不一致）
+  
+- ✅ `backend/internal/repository/user_repo.go`
+  - 新增 UpdateCountry 方法：更新用户的国家/地区信息
+  
+- ✅ `backend/internal/handler/auth_handler.go`
+  - Login handler 传递新的参数到 service 层
+  - 日志记录增加 user_type、country、dial_code 信息
+
+**前端修改：**
+- ✅ `example/lib/utils/auth_service.dart`
+  - login 方法增加 country、dialCode 参数（默认 CN、+86）
+  - 请求体添加 user_type、country、dial_code 字段
+  - register 方法改用 loginType 参数替代 registerType
+  
+- ✅ `example/lib/pages/auth/login_page.dart`
+  - 登录时传递当前选择的国家代码和区号
+  
+- ✅ `example/lib/pages/auth/register_page.dart`
+  - 注册时使用 loginType 参数
+
+**技术改进：**
+- 🎯 前后端字段统一，优先匹配数据库结构
+- 🎯 登录流程更智能，自动识别用户类型和登录方式
+- 🎯 国家/地区信息实时同步，保证数据准确性
+- 🎯 代码结构更清晰，职责分离更明确
+
 #### 2026-04-30 - 优化后端认证逻辑和错误返回
 **优化内容：**
 - ✅ 统一错误提示语，更加友好和明确

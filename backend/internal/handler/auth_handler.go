@@ -45,9 +45,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	logger.Info("收到登录请求", 
 		zap.String("phone", phone), 
-		zap.String("email", email))
+		zap.String("email", email),
+		zap.Int("user_type", req.UserType),
+		zap.String("country", req.Country),
+		zap.String("dial_code", req.DialCode))
 
-	result, err := h.authService.Login(phone, email, req.Password)
+	result, err := h.authService.Login(phone, email, req.Password, req.UserType, req.Country, req.DialCode)
 	if err != nil {
 		logger.Warn("登录失败",
 			zap.String("reason", err.Error()),
