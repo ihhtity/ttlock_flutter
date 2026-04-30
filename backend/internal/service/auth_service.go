@@ -27,12 +27,21 @@ func NewAuthService() *AuthService {
 
 // Login 用户登录（支持管理端和客户端）
 func (s *AuthService) Login(phone, email, password string) (*model.LoginResponse, error) {
-	// 先尝试查找管理员
+	// 参数验证
+	if password == "" {
+		return nil, errors.New("密码不能为空")
+	}
+	
+	if phone == "" && email == "" {
+		return nil, errors.New("手机号或邮箱不能为空")
+	}
+
+	// 先尝试查找管理员（优先使用用户名/手机号）
 	if phone != "" {
 		admin, err := s.adminRepo.FindByUsername(phone)
 		if err != nil {
 			logger.Error("查询管理员失败", err, zap.String("username", phone))
-			return nil, errors.New("服务器错误")
+			return nil, errors.New("服务器错误，请稍后重试")
 		}
 
 		if admin != nil {
@@ -53,11 +62,11 @@ func (s *AuthService) Login(phone, email, password string) (*model.LoginResponse
 	
 	if err != nil {
 		logger.Error("查询用户失败", err)
-		return nil, errors.New("服务器错误!")
+		return nil, errors.New("服务器错误，请稍后重试")
 	}
 
 	if user == nil {
-		return nil, errors.New("用户不存在")
+		return nil, errors.New("账号不存在，请先注册")
 	}
 
 	// 客户端用户登录
@@ -68,28 +77,32 @@ func (s *AuthService) Login(phone, email, password string) (*model.LoginResponse
 func (s *AuthService) loginAdmin(admin *model.Admin, password string) (*model.LoginResponse, error) {
 	// 检查管理员状态
 	if admin.Status != 1 {
-		return nil, errors.New("账号已被禁用")
+		return nil, errors.New("账号已被禁用，请联系管理员")
 	}
 
 	// 检查是否同意用户协议和隐私政策
 	if admin.AgreeTerms != 1 {
-		return nil, errors.New("请先同意用户协议和隐私政策")
+		return nil, errors.New("请先阅读并同意用户协议和隐私政策")
 	}
 
 	// 验证密码
 	if !s.adminRepo.VerifyPassword(admin.Password, password) {
-		return nil, errors.New("密码错误")
+		return nil, errors.New("密码错误，请重新输入")
 	}
 
 	// 生成 Token (role=1表示管理员)
 	token, err := jwt.GenerateToken(admin.ID, 0, admin.Role, 24)
 	if err != nil {
 		logger.Error("生成Token失败", err)
-		return nil, errors.New("服务器错误")
+		return nil, errors.New("服务器错误，请稍后重试")
 	}
 
 	// 更新最后登录时间
 	s.adminRepo.UpdateLastLogin(admin.ID)
+
+	logger.Info("管理员登录成功", 
+		zap.Int("admin_id", admin.ID),
+		zap.String("username", admin.Username))
 
 	// 返回响应
 	return &model.LoginResponse{
@@ -109,23 +122,27 @@ func (s *AuthService) loginAdmin(admin *model.Admin, password string) (*model.Lo
 func (s *AuthService) loginClient(user *model.Client, password string) (*model.LoginResponse, error) {
 	// 检查用户状态
 	if user.Status != 1 {
-		return nil, errors.New("账号已被禁用")
+		return nil, errors.New("账号已被禁用，请联系客服")
 	}
 
 	// 验证密码
 	if !s.userRepo.VerifyPassword(user.Password, password) {
-		return nil, errors.New("密码错误")
+		return nil, errors.New("密码错误，请重新输入")
 	}
 
 	// 生成 Token (role=0表示客户端用户)
 	token, err := jwt.GenerateToken(user.ID, user.AdminsID, 0, 24)
 	if err != nil {
 		logger.Error("生成Token失败", err)
-		return nil, errors.New("服务器错误")
+		return nil, errors.New("服务器错误，请稍后重试")
 	}
 
 	// 更新最后登录时间
 	s.userRepo.UpdateLastLogin(user.ID)
+
+	logger.Info("用户登录成功", 
+		zap.Int("user_id", user.ID),
+		zap.String("nickname", *user.Nickname))
 
 	// 返回响应
 	return &model.LoginResponse{
@@ -142,6 +159,15 @@ func (s *AuthService) loginClient(user *model.Client, password string) (*model.L
 
 // Register 用户注册（支持管理端和用户端）
 func (s *AuthService) Register(req *model.RegisterRequest) error {
+	// 参数验证
+	if req.Password == "" {
+		return errors.New("密码不能为空")
+	}
+	
+	if req.Nickname == "" {
+		return errors.New("昵称不能为空")
+	}
+	
 	// 检查手机号和邮箱是否都不提供
 	if (req.Phone == nil || *req.Phone == "") && (req.Email == nil || *req.Email == "") {
 		return errors.New("手机号或邮箱必须提供一个")
@@ -163,14 +189,14 @@ func (s *AuthService) registerAdmin(req *model.RegisterRequest) error {
 	if req.Phone != nil && *req.Phone != "" {
 		existAdmin, _ := s.adminRepo.FindByPhone(*req.Phone)
 		if existAdmin != nil {
-			return errors.New("手机号已注册")
+			return errors.New("该手机号已被注册，请直接登录")
 		}
 	}
 	
 	if req.Email != nil && *req.Email != "" {
 		existAdmin, _ := s.adminRepo.FindByEmail(*req.Email)
 		if existAdmin != nil {
-			return errors.New("邮箱已注册")
+			return errors.New("该邮箱已被注册，请直接登录")
 		}
 	}
 	
@@ -194,33 +220,31 @@ func (s *AuthService) registerAdmin(req *model.RegisterRequest) error {
 	}
 	
 	if err := s.adminRepo.Create(admin, req.Password); err != nil {
-		logger.Error("创建管理员失败", err)
-		return errors.New("注册失败")
+		logger.Error("创建管理员失败", err, zap.String("username", username))
+		return errors.New("注册失败，请稍后重试")
 	}
 	
-	logger.Info("管理员注册成功", zap.String("username", username))
+	logger.Info("管理员注册成功", 
+		zap.String("username", username),
+		zap.String("phone", *req.Phone),
+		zap.String("email", *req.Email))
 	return nil
 }
 
 // registerClient 用户端注册
 func (s *AuthService) registerClient(req *model.RegisterRequest) error {
-	// 检查手机号和邮箱是否都不提供
-	if (req.Phone == nil || *req.Phone == "") && (req.Email == nil || *req.Email == "") {
-		return errors.New("手机号或邮箱必须提供一个")
-	}
-	
 	// 根据注册方式检查是否已存在
 	if req.Phone != nil && *req.Phone != "" {
 		existUser, _ := s.userRepo.FindByPhone(*req.Phone)
 		if existUser != nil {
-			return errors.New("手机号已注册")
+			return errors.New("该手机号已被注册，请直接登录")
 		}
 	}
 	
 	if req.Email != nil && *req.Email != "" {
 		existUser, _ := s.userRepo.FindByEmail(*req.Email)
 		if existUser != nil {
-			return errors.New("邮箱已注册")
+			return errors.New("该邮箱已被注册，请直接登录")
 		}
 	}
 
@@ -270,8 +294,8 @@ func (s *AuthService) registerClient(req *model.RegisterRequest) error {
 	}
 
 	if err := s.userRepo.Create(user, req.Password); err != nil {
-		logger.Error("创建用户失败", err)
-		return errors.New("注册失败")
+		logger.Error("创建用户失败", err, zap.String("nickname", nickname))
+		return errors.New("注册失败，请稍后重试")
 	}
 
 	// 注册成功后，标记验证码为已使用（type=1表示注册）
@@ -283,11 +307,6 @@ func (s *AuthService) registerClient(req *model.RegisterRequest) error {
 	if req.Email != nil {
 		emailStr = *req.Email
 	}
-	
-	logger.Info("准备标记验证码为已使用", 
-		zap.String("phone", phoneStr),
-		zap.String("email", emailStr),
-		zap.Int("type", 1))
 	
 	verificationCode, err := s.verificationRepo.FindValidCode(phoneStr, emailStr, 1)
 	if err != nil {
@@ -307,6 +326,10 @@ func (s *AuthService) registerClient(req *model.RegisterRequest) error {
 		}
 	}
 
-	logger.Info("用户注册成功", zap.Int("user_id", user.ID))
+	logger.Info("用户注册成功", 
+		zap.Int("user_id", user.ID),
+		zap.String("nickname", nickname),
+		zap.String("phone", phoneStr),
+		zap.String("email", emailStr))
 	return nil
 }

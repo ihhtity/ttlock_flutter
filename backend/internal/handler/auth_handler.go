@@ -29,7 +29,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var req model.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("登录参数错误", zap.Error(err))
-		response.BadRequest(c, "参数错误: "+err.Error())
+		response.BadRequest(c, "请求参数错误，请检查输入")
 		return
 	}
 
@@ -49,7 +49,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	result, err := h.authService.Login(phone, email, req.Password)
 	if err != nil {
-		logger.Error("登录失败", err,
+		logger.Warn("登录失败",
+			zap.String("reason", err.Error()),
 			zap.String("phone", phone),
 			zap.String("email", email))
 		response.Unauthorized(c, err.Error())
@@ -58,6 +59,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	logger.Info("用户登录成功", 
 		zap.Int("user_id", result.User.ID),
+		zap.String("nickname", *result.User.Nickname),
 		zap.String("phone", phone),
 		zap.String("email", email))
 	response.Success(c, result)
@@ -68,7 +70,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var req model.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("注册参数错误", zap.Error(err))
-		response.BadRequest(c, "参数错误: "+err.Error())
+		response.BadRequest(c, "请求参数错误，请检查输入")
 		return
 	}
 
@@ -84,10 +86,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	logger.Info("收到注册请求",
 		zap.String("phone", phone),
 		zap.String("email", email),
-		zap.String("nickname", req.Nickname))
+		zap.String("nickname", req.Nickname),
+		zap.Int("register_type", req.RegisterType))
 
 	if err := h.authService.Register(&req); err != nil {
-		logger.Error("注册失败", err,
+		logger.Warn("注册失败",
+			zap.String("reason", err.Error()),
 			zap.String("phone", phone),
 			zap.String("email", email))
 		response.BadRequest(c, err.Error())
@@ -96,7 +100,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	logger.Info("用户注册成功",
 		zap.String("phone", phone),
-		zap.String("email", email))
+		zap.String("email", email),
+		zap.String("nickname", req.Nickname))
 	response.SuccessWithMessage(c, "注册成功", nil)
 }
 
@@ -105,7 +110,7 @@ func (h *AuthHandler) SendVerificationCode(c *gin.Context) {
 	var req model.SendVerificationCodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("发送验证码参数错误", zap.Error(err))
-		response.BadRequest(c, "参数错误: "+err.Error())
+		response.BadRequest(c, "请求参数错误，请检查输入")
 		return
 	}
 
@@ -118,7 +123,8 @@ func (h *AuthHandler) SendVerificationCode(c *gin.Context) {
 		zap.Int("type", req.Type))
 
 	if err := h.verificationService.SendCode(phone, email, req.Type); err != nil {
-		logger.Error("发送验证码失败", err,
+		logger.Warn("发送验证码失败",
+			zap.String("reason", err.Error()),
 			zap.String("phone", phone),
 			zap.String("email", email),
 			zap.Int("type", req.Type))
@@ -128,7 +134,8 @@ func (h *AuthHandler) SendVerificationCode(c *gin.Context) {
 
 	logger.Info("验证码发送成功",
 		zap.String("phone", phone),
-		zap.String("email", email))
+		zap.String("email", email),
+		zap.Int("type", req.Type))
 	response.SuccessWithMessage(c, "验证码已发送", nil)
 }
 
@@ -137,7 +144,7 @@ func (h *AuthHandler) VerifyCode(c *gin.Context) {
 	var req model.VerifyCodeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		logger.Warn("验证验证码参数错误", zap.Error(err))
-		response.BadRequest(c, "参数错误: "+err.Error())
+		response.BadRequest(c, "请求参数错误，请检查输入")
 		return
 	}
 
@@ -151,7 +158,8 @@ func (h *AuthHandler) VerifyCode(c *gin.Context) {
 		zap.Int("type", req.Type))
 
 	if err := h.verificationService.VerifyCode(phone, email, req.Code, req.Type); err != nil {
-		logger.Error("验证验证码失败", err,
+		logger.Warn("验证验证码失败",
+			zap.String("reason", err.Error()),
 			zap.String("phone", phone),
 			zap.String("email", email),
 			zap.String("code", req.Code),
@@ -162,7 +170,8 @@ func (h *AuthHandler) VerifyCode(c *gin.Context) {
 
 	logger.Info("验证码验证成功",
 		zap.String("phone", phone),
-		zap.String("email", email))
+		zap.String("email", email),
+		zap.Int("type", req.Type))
 	response.SuccessWithMessage(c, "验证成功", nil)
 }
 
@@ -190,7 +199,8 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 		zap.String("email", email))
 
 	if err := h.verificationService.ResetPassword(phone, email, req.Code, req.NewPassword); err != nil {
-		logger.Error("重置密码失败", err,
+		logger.Warn("重置密码失败",
+			zap.String("reason", err.Error()),
 			zap.String("phone", phone),
 			zap.String("email", email))
 		response.BadRequest(c, err.Error())
@@ -228,7 +238,8 @@ func (h *AuthHandler) RetrievePassword(c *gin.Context) {
 
 	password, err := h.verificationService.RetrievePassword(phone, email, req.Code)
 	if err != nil {
-		logger.Error("找回密码失败", err,
+		logger.Warn("找回密码失败",
+			zap.String("reason", err.Error()),
 			zap.String("phone", phone),
 			zap.String("email", email))
 		response.BadRequest(c, err.Error())
